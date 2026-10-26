@@ -41,8 +41,6 @@ run_tests() {
 install() {
     build
     adb install -r "$APK"
-    # Lets screen sync start without a consent dialog every time; revoke with `appops set ... default`.
-    adb shell appops set "$PKG" PROJECT_MEDIA allow
 }
 
 # Make this the home screen. If the TV still opens its own launcher, switch that launcher off

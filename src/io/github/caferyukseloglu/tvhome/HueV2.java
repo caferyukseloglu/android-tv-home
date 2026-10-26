@@ -21,7 +21,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 /**
- * Hue's v2 API, which can set each color point of a gradient strip. It is HTTPS only, with a
+ * Hue's v2 API, for the built-in effects (fire, candle, ...) that v1 cannot start. It is HTTPS only, with a
  * certificate the bridge signs itself, so the certificate is pinned on first use. Blocking calls:
  * run them off the main thread.
  */
@@ -30,8 +30,6 @@ final class HueV2 {
     private final String base;
     private final String key;
     private final SSLSocketFactory tls;
-    private String lightId;
-    private JSONObject original; // the strip's state before we took over, put back on stop
 
     HueV2(Context context) throws Exception {
         prefs = context.getSharedPreferences("hue", Context.MODE_PRIVATE);
@@ -42,41 +40,24 @@ final class HueV2 {
         tls = ssl.getSocketFactory();
     }
 
-    /** Finds the strip by its v1 id and remembers how it looked. False when it is not a gradient light. */
-    boolean takeOver(String v1Id) throws Exception {
-        JSONArray lights = new JSONObject(https("GET", "", null)).getJSONArray("data");
-        for (int i = 0; i < lights.length(); i++) {
-            JSONObject l = lights.getJSONObject(i);
-            if (!l.has("gradient") || !l.optString("id_v1").equals("/lights/" + v1Id)) continue;
-            lightId = l.getString("id");
-            original = new JSONObject()
-                    .put("on", l.getJSONObject("on"))
-                    .put("dimming", l.getJSONObject("dimming"));
-            JSONArray points = l.getJSONObject("gradient").getJSONArray("points");
-            if (points.length() > 0) original.put("gradient", new JSONObject().put("points", points));
-            else if (l.has("color")) original.put("color", new JSONObject().put("xy", l.getJSONObject("color").getJSONObject("xy")));
-            return true;
-        }
-        return false;
-    }
-
-    /** colors: 0xRRGGBB in strip order. brightness: 0-100. */
-    void show(int[] colors, double brightness, int fadeMs) throws Exception {
-        JSONArray points = new JSONArray();
-        for (int c : colors) {
-            double[] xy = Colors.rgbToXy((c >> 16) & 255, (c >> 8) & 255, c & 255);
-            points.put(new JSONObject().put("color", new JSONObject().put("xy", new JSONObject().put("x", xy[0]).put("y", xy[1]))));
-        }
-        https("PUT", "/" + lightId, new JSONObject()
+    /** One of the bridge's built-in effects ("fire", "candle", ...), or "no_effect" to stop. */
+    void effect(String v1Id, String effect) throws Exception {
+        JSONObject l = find(v1Id);
+        if (l == null) throw new IOException("light " + v1Id + " not found");
+        https("PUT", "/" + l.getString("id"), new JSONObject()
                 .put("on", new JSONObject().put("on", true))
-                .put("gradient", new JSONObject().put("points", points))
-                .put("dimming", new JSONObject().put("brightness", brightness))
-                .put("dynamics", new JSONObject().put("duration", fadeMs))
+                .put("effects", new JSONObject().put("effect", effect))
                 .toString());
     }
 
-    void restore() throws Exception {
-        if (lightId != null && original != null) https("PUT", "/" + lightId, original.toString());
+    /** v2 lights are keyed by UUID; the v1 id the rest of the app uses is in id_v1. */
+    private JSONObject find(String v1Id) throws Exception {
+        JSONArray lights = new JSONObject(https("GET", "", null)).getJSONArray("data");
+        for (int i = 0; i < lights.length(); i++) {
+            JSONObject l = lights.getJSONObject(i);
+            if (l.optString("id_v1").equals("/lights/" + v1Id)) return l;
+        }
+        return null;
     }
 
     private String https(String method, String path, String body) throws IOException {

@@ -16,9 +16,20 @@
     <string name="hidden">Gizli. Göstermek için OK\'e basılı tutun.</string>
     <string name="hue_no_lights">Hue Bridge\'de henüz ışık yok</string>
     <string name="on_percent">Açık · %%%1$d</string>
-    <string name="brightness">Parlaklık  %%%1$d</string>
-    <string name="ambilight">Ekran senkronu</string>
-    <string name="ambilight_start">Görüntüye göre renklendir</string>
-    <string name="ambilight_stop">Ekran senkronunu durdur</string>
-    <string name="ambilight_failed">Ekran senkronu başlatılamadı</string>
+    <string name="brightness">%%%1$d</string>
+    <string name="film_mode">Film modu</string>
+    <string name="brightness_title">Parlaklık</string>
+    <string name="color_title">Renk</string>
+    <string name="effect_title">Efektler</string>
+    <string name="effect_none">Yok</string>
+    <string name="effect_candle">Mum</string>
+    <string name="effect_fire">Şömine</string>
+    <string name="effect_sunbeam">Gün ışığı</string>
+    <string name="effect_glisten">Parıltı</string>
+    <string name="effect_sparkle">Işıltı</string>
+    <string name="effect_opal">Opal</string>
+    <string name="effect_prism">Prizma</string>
+    <string name="effect_underwater">Su altı</string>
+    <string name="effect_cosmos">Kozmos</string>
+    <string name="effect_enchant">Büyü</string>
 </resources>

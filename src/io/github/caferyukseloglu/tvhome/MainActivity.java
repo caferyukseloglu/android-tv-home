@@ -2,7 +2,6 @@ package io.github.caferyukseloglu.tvhome;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.media.projection.MediaProjectionManager;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -18,13 +17,12 @@ import android.widget.TextView;
 
 /** The home screen: clock, Hue lights, apps. Nothing else. */
 public final class MainActivity extends Activity {
-    private static final int CAPTURE = 1;
     private static final int EDGE = 60; // dp from the screen edge to text and the first card
     private Apps apps;
     private LightsRow lights;
     private LinearLayout appRow;
     private TextView appLabel;
-    private String ambilightLight; // the strip chosen while the capture consent screen is up
+    private FilmMode film;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -51,12 +49,14 @@ public final class MainActivity extends Activity {
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xFF17191E, 0xFF0B0C0F}));
         root.addView(content);
         setContentView(root);
-        lights = new LightsRow(this, lightRow, this::setAmbilight);
+        film = new FilmMode(this);
+        lights = new LightsRow(this, lightRow, film);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        film.end(); // back on Home: the TV light returns to how it was
         showApps(null);
         lights.resume();
     }
@@ -65,26 +65,6 @@ public final class MainActivity extends Activity {
     protected void onPause() {
         lights.pause();
         super.onPause();
-    }
-
-    /** Screen capture needs the system's consent screen; home.sh pre-grants it so it passes straight through. */
-    private void setAmbilight(String lightId) {
-        if (lightId == null) {
-            stopService(new Intent(this, Ambilight.class));
-            return;
-        }
-        ambilightLight = lightId;
-        startActivityForResult(getSystemService(MediaProjectionManager.class).createScreenCaptureIntent(), CAPTURE);
-    }
-
-    @Override
-    protected void onActivityResult(int request, int result, Intent data) {
-        if (request == CAPTURE && result == RESULT_OK) {
-            startForegroundService(new Intent(this, Ambilight.class)
-                    .putExtra(Ambilight.EXTRA_CODE, result)
-                    .putExtra(Ambilight.EXTRA_DATA, data)
-                    .putExtra(Ambilight.EXTRA_LIGHT, ambilightLight));
-        }
     }
 
     @Override
@@ -120,7 +100,10 @@ public final class MainActivity extends Activity {
         card.setContentDescription(app.label);
         String label = app.hidden ? app.label + "  ·  " + getString(R.string.hidden) : app.label.toString();
         Ui.focusable(card, Ui.rounded(this, Ui.CARD), (v, has) -> appLabel.setText(has ? label : ""));
-        card.setOnClickListener(v -> apps.launch(app));
+        card.setOnClickListener(v -> {
+            film.start(app.pkg);
+            apps.launch(app);
+        });
         card.setOnLongClickListener(v -> {
             apps.toggleHidden(app.pkg);
             showApps(app.pkg);

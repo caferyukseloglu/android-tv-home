@@ -16,9 +16,20 @@
     <string name="hidden">Hidden. Hold OK to show again.</string>
     <string name="hue_no_lights">No lights on the Hue Bridge yet</string>
     <string name="on_percent">On · %1$d%%</string>
-    <string name="brightness">Brightness  %1$d%%</string>
-    <string name="ambilight">Screen sync</string>
-    <string name="ambilight_start">Color with the picture</string>
-    <string name="ambilight_stop">Stop screen sync</string>
-    <string name="ambilight_failed">Screen sync could not start</string>
+    <string name="brightness">%1$d%%</string>
+    <string name="film_mode">Film mode</string>
+    <string name="brightness_title">Brightness</string>
+    <string name="color_title">Color</string>
+    <string name="effect_title">Effects</string>
+    <string name="effect_none">None</string>
+    <string name="effect_candle">Candle</string>
+    <string name="effect_fire">Fireplace</string>
+    <string name="effect_sunbeam">Sunbeam</string>
+    <string name="effect_glisten">Glisten</string>
+    <string name="effect_sparkle">Sparkle</string>
+    <string name="effect_opal">Opal</string>
+    <string name="effect_prism">Prism</string>
+    <string name="effect_underwater">Underwater</string>
+    <string name="effect_cosmos">Cosmos</string>
+    <string name="effect_enchant">Enchant</string>
 </resources>

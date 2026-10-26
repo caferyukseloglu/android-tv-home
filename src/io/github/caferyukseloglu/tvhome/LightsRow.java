@@ -20,27 +20,19 @@ final class LightsRow {
     private final Context context;
     private final Hue hue;
     private final LinearLayout row;
-    private final LightPanel.Listener panelListener;
+    private final LightPanel.Listener panelListener = this::refreshSoon;
+    private final FilmMode film;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Map<String, LightCard> cards = new LinkedHashMap<>();
     private final Runnable refresh = this::refresh;
     private StatusCard status;
     private boolean resumed;
 
-    /** ambilight: gets the strip's light id to start screen sync, null to stop; the activity owns the capture request. */
-    LightsRow(Context context, LinearLayout row, java.util.function.Consumer<String> ambilight) {
+    LightsRow(Context context, LinearLayout row, FilmMode film) {
         this.context = context;
         this.hue = new Hue(context);
         this.row = row;
-        this.panelListener = new LightPanel.Listener() {
-            @Override public void changed() {
-                refreshSoon();
-            }
-
-            @Override public void ambilight(String lightId) {
-                ambilight.accept(lightId);
-            }
-        };
+        this.film = film;
     }
 
     void resume() {
@@ -166,7 +158,7 @@ final class LightsRow {
                 });
             });
             view.setOnLongClickListener(v -> {
-                new LightPanel(context, hue, light, panelListener).show();
+                new LightPanel(context, hue, light, film, panelListener).show();
                 return true;
             });
         }

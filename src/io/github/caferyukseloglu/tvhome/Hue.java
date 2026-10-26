@@ -153,9 +153,19 @@ final class Hue {
     /** state: Hue v1 light state, e.g. {"on":true,"bri":200,"xy":[0.6,0.3]}. */
     void setState(String lightId, JSONObject state, Result<Void> cb) {
         async(() -> {
-            http("PUT", "/api/" + user() + "/lights/" + lightId + "/state", state.toString());
+            putState(lightId, state);
             return null;
         }, cb);
+    }
+
+    /** Blocking; call inside async(). */
+    void putState(String lightId, JSONObject state) throws IOException {
+        http("PUT", "/api/" + user() + "/lights/" + lightId + "/state", state.toString());
+    }
+
+    /** Blocking; call inside async(). The lamp's v1 state object (on, bri, colormode, xy, ct, ...). */
+    JSONObject lightState(String lightId) throws IOException, org.json.JSONException {
+        return new JSONObject(http("GET", "/api/" + user() + "/lights/" + lightId, null)).getJSONObject("state");
     }
 
     /** The TV strip first (it is the light people reach for while watching), then in the bridge's order. */
@@ -210,7 +220,8 @@ final class Hue {
         }
     }
 
-    private <T> void async(Callable<T> work, Result<T> cb) {
+    /** Runs blocking bridge work on the shared network thread; the result comes back on the main thread. */
+    <T> void async(Callable<T> work, Result<T> cb) {
         IO.execute(() -> {
             try {
                 T value = work.call();

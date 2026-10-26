@@ -37,6 +37,11 @@ final class Ui {
 
     /** Focused cards grow, lift and get a white ring, like tvOS. */
     static void focusable(View v, GradientDrawable bg, View.OnFocusChangeListener also) {
+        focusable(v, bg, also, 1.1f);
+    }
+
+    /** zoom 1 for wide controls (a full-width bar) that would grow past their panel. */
+    static void focusable(View v, GradientDrawable bg, View.OnFocusChangeListener also, float zoom) {
         Context c = v.getContext();
         // The ring is a foreground so it draws over app banners; on the background a banner would hide it.
         GradientDrawable ring = new GradientDrawable();
@@ -47,7 +52,7 @@ final class Ui {
         v.setForeground(ring);
         v.setClipToOutline(true);
         v.setOnFocusChangeListener((view, has) -> {
-            float scale = has ? 1.1f : 1f;
+            float scale = has ? zoom : 1f;
             view.animate().scaleX(scale).scaleY(scale).translationZ(has ? dp(c, 10) : 0).setDuration(140).start();
             ring.setStroke(has ? dp(c, 3) : 0, TEXT);
             if (also != null) also.onFocusChange(view, has);

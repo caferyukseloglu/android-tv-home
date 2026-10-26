@@ -1,6 +1,6 @@
 package io.github.caferyukseloglu.tvhome;
 
-/** Color math between screen sRGB and Hue's CIE xy, plus screen-edge sampling. Pure Java, tested by tools/ColorsTest. */
+/** Color math between screen sRGB and Hue's CIE xy. Pure Java, tested by tools/ColorsTest. */
 final class Colors {
     static final double[] WHITE_POINT = {0.3127, 0.3290};
     private static final int WARM = 0xFFB46B; // 2000 K, Hue ct 500
@@ -44,58 +44,6 @@ final class Colors {
         int g = (int) Math.round(((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t);
         int bl = (int) Math.round((a & 255) * (1 - t) + (b & 255) * t);
         return (r << 16) | (g << 8) | bl;
-    }
-
-    /** Average colors of five zones along the left, top and right edges, in strip order. */
-    static int[] edgeColors(int[] rgb, int w, int h) {
-        int side = w / 6;
-        int topH = h / 3;
-        int third = (w - 2 * side) / 3;
-        return new int[] {
-            average(rgb, w, 0, 0, side, h),
-            average(rgb, w, side, 0, side + third, topH),
-            average(rgb, w, side + third, 0, side + 2 * third, topH),
-            average(rgb, w, side + 2 * third, 0, w - side, topH),
-            average(rgb, w, w - side, 0, w, h),
-        };
-    }
-
-    /** Protected apps (Netflix and other DRM video) are captured as pure black frames. */
-    static boolean allBlack(int[] rgb) {
-        for (int c : rgb) if ((c & 0xFFFFFF) != 0) return false;
-        return true;
-    }
-
-    /** 0 = black, 1 = white; used to dim the strip in dark scenes. */
-    static double brightness(int[] colors) {
-        double sum = 0;
-        for (int c : colors) sum += Math.max((c >> 16) & 255, Math.max((c >> 8) & 255, c & 255)) / 255.0;
-        return sum / colors.length;
-    }
-
-    static int distance(int[] a, int[] b) {
-        int d = 0;
-        for (int i = 0; i < a.length; i++) {
-            d += Math.abs(((a[i] >> 16) & 255) - ((b[i] >> 16) & 255));
-            d += Math.abs(((a[i] >> 8) & 255) - ((b[i] >> 8) & 255));
-            d += Math.abs((a[i] & 255) - (b[i] & 255));
-        }
-        return d;
-    }
-
-    private static int average(int[] rgb, int w, int x0, int y0, int x1, int y1) {
-        long r = 0, g = 0, b = 0;
-        int n = 0;
-        for (int y = y0; y < y1; y++) {
-            for (int x = x0; x < x1; x++) {
-                int c = rgb[y * w + x];
-                r += (c >> 16) & 255;
-                g += (c >> 8) & 255;
-                b += c & 255;
-                n++;
-            }
-        }
-        return n == 0 ? 0 : (int) ((r / n) << 16 | (g / n) << 8 | (b / n));
     }
 
     private static double linear(double c) {
