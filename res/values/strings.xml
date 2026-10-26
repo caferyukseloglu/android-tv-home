@@ -38,4 +38,5 @@
     <string name="moving_hint">Left and Right move it, OK puts it down</string>
     <string name="panel_key">Lights key</string>
     <string name="panel_key_description">Opens the lights panel with one remote key. Reads only that key; nothing on screen.</string>
+    <string name="light_failed">The light could not be set</string>
 </resources>

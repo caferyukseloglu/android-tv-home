@@ -38,4 +38,5 @@
     <string name="moving_hint">Sol ve Sağ ile taşı, bırakmak için OK</string>
     <string name="panel_key">Işık tuşu</string>
     <string name="panel_key_description">Işık panelini kumandadaki tek bir tuşla açar. Sadece o tuşu okur, ekrandaki hiçbir şeyi okumaz.</string>
+    <string name="light_failed">Işık ayarlanamadı</string>
 </resources>

@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -12,6 +13,7 @@ import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -189,7 +191,7 @@ final class LightPanel extends Dialog {
             chip.setOnClickListener(x -> hue.async(() -> {
                 new HueV2(context).effect(light.id, name);
                 return null;
-            }, (ok, error) -> listener.changed()));
+            }, this::done));
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(context, 40));
             p.rightMargin = Ui.dp(context, 10);
             row.addView(chip, p);
@@ -203,7 +205,16 @@ final class LightPanel extends Dialog {
     }
 
     private void send(JSONObject state) {
-        hue.setState(light.id, state, (ok, error) -> listener.changed());
+        hue.setState(light.id, state, this::done);
+    }
+
+    /** Every command ends here: a failure is shown and logged, never dropped. */
+    private void done(Void ignored, Exception error) {
+        if (error != null) {
+            Log.w("LightPanel", "light " + light.id + " not set", error);
+            Toast.makeText(context, R.string.light_failed, Toast.LENGTH_LONG).show();
+        }
+        listener.changed();
     }
 
     /** json("on", true, "xy", new double[] {x, y}) -> {"on":true,"xy":[x,y]} */
