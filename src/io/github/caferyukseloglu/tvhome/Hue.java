@@ -168,6 +168,44 @@ final class Hue {
         return new JSONObject(http("GET", "/api/" + user() + "/lights/" + lightId, null)).getJSONObject("state");
     }
 
+    static final class Scene {
+        final String id;
+        final String name;
+
+        Scene(String id, String name) {
+            this.id = id;
+            this.name = name;
+        }
+    }
+
+    /** Scenes saved in the Hue app that include this lamp, in the bridge's order. */
+    void scenes(String lightId, Result<List<Scene>> cb) {
+        async(() -> {
+            JSONObject all = new JSONObject(http("GET", "/api/" + user() + "/scenes", null));
+            List<Scene> out = new ArrayList<>();
+            for (Iterator<String> it = all.keys(); it.hasNext(); ) {
+                String id = it.next();
+                JSONObject sc = all.getJSONObject(id);
+                JSONArray lights = sc.optJSONArray("lights");
+                for (int i = 0; lights != null && i < lights.length(); i++) {
+                    if (lights.getString(i).equals(lightId)) {
+                        out.add(new Scene(id, sc.getString("name")));
+                        break;
+                    }
+                }
+            }
+            return out;
+        }, cb);
+    }
+
+    /** Group 0 is every light: the bridge applies the scene to the lamps it names. */
+    void recall(String sceneId, Result<Void> cb) {
+        async(() -> {
+            http("PUT", "/api/" + user() + "/groups/0/action", new JSONObject().put("scene", sceneId).toString());
+            return null;
+        }, cb);
+    }
+
     /** The TV strip first (it is the light people reach for while watching), then in the bridge's order. */
     static List<Light> parseLights(JSONObject lights) throws org.json.JSONException {
         List<Light> out = new ArrayList<>();

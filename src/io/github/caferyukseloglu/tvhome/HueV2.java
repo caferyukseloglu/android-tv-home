@@ -27,13 +27,15 @@ import javax.net.ssl.X509TrustManager;
  */
 final class HueV2 {
     private final SharedPreferences prefs;
+    private final String host;
     private final String base;
     private final String key;
     private final SSLSocketFactory tls;
 
     HueV2(Context context) throws Exception {
         prefs = context.getSharedPreferences("hue", Context.MODE_PRIVATE);
-        base = "https://" + prefs.getString("ip", "") + "/clip/v2/resource/light";
+        host = "https://" + prefs.getString("ip", "");
+        base = host + "/clip/v2/resource/light";
         key = prefs.getString("user", "");
         SSLContext ssl = SSLContext.getInstance("TLS");
         ssl.init(null, new TrustManager[] {new PinnedTrust()}, null);
@@ -76,15 +78,29 @@ final class HueV2 {
         return null;
     }
 
-    private String https(String method, String path, String body) throws IOException {
-        // No disconnect(): the kept-alive connection is reused by the next frame.
-        HttpsURLConnection c = (HttpsURLConnection) new URL(base + path).openConnection();
+    /** The open live event stream; read it line by line, disconnect() to end it. */
+    java.net.HttpURLConnection events() throws IOException {
+        HttpsURLConnection c = connect(host + "/eventstream/clip/v2");
+        c.setReadTimeout(0); // events come when something changes, which may be hours apart
+        c.setRequestProperty("Accept", "text/event-stream");
+        if (c.getResponseCode() != 200) throw new IOException("event stream " + c.getResponseCode());
+        return c;
+    }
+
+    private HttpsURLConnection connect(String url) throws IOException {
+        HttpsURLConnection c = (HttpsURLConnection) new URL(url).openConnection();
         c.setSSLSocketFactory(tls);
-        c.setHostnameVerifier((host, session) -> true); // the certificate names the bridge, not its IP; the pin covers identity
-        c.setRequestMethod(method);
+        c.setHostnameVerifier((h, session) -> true); // the certificate names the bridge, not its IP; the pin covers identity
         c.setConnectTimeout(3000);
         c.setReadTimeout(3000);
         c.setRequestProperty("hue-application-key", key);
+        return c;
+    }
+
+    private String https(String method, String path, String body) throws IOException {
+        // No disconnect(): the kept-alive connection is reused by the next call.
+        HttpsURLConnection c = connect(base + path);
+        c.setRequestMethod(method);
         if (body != null) {
             c.setDoOutput(true);
             c.setRequestProperty("Content-Type", "application/json");

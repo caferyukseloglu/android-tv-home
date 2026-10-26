@@ -15,6 +15,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -40,14 +43,7 @@ final class LightPanel extends Dialog {
         {"opal", R.string.effect_opal}, {"prism", R.string.effect_prism}, {"underwater", R.string.effect_underwater},
         {"cosmos", R.string.effect_cosmos}, {"enchant", R.string.effect_enchant},
     };
-    /** Multi-color looks for gradient strips, start to end. */
-    private static final Object[][] PALETTES = {
-        {R.string.palette_prism, new int[] {0xFF2D55, 0xFF9500, 0xFFD60A, 0x34C759, 0x0A84FF}},
-        {R.string.palette_sunset, new int[] {0xFF5E3A, 0xFF8A00, 0xFFB46B, 0xFF2D92, 0x8E44FF}},
-        {R.string.palette_ocean, new int[] {0x003CFF, 0x00A2FF, 0x30D5C8, 0x0A84FF, 0x5E5CE6}},
-        {R.string.palette_aurora, new int[] {0x34C759, 0x30D5C8, 0x5E5CE6, 0xBF5AF2, 0x34C759}},
-        {R.string.palette_neon, new int[] {0xFF2D92, 0xBF5AF2, 0x0A84FF, 0xBF5AF2, 0xFF2D92}},
-    };
+    private static List<Palettes.Palette> palettes; // res/raw/hue_palettes.txt, read once
     private static final int STEP = 25; // brightness step on the 1-254 scale, about 10%
 
     private final Context context;
@@ -82,17 +78,29 @@ final class LightPanel extends Dialog {
         title.setText(light.name);
         panel.addView(title);
         if (light.gradient) panel.addView(filmButton(), spaced(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(context, 56)));
+        LinearLayout scenes = new LinearLayout(context); // filled when the bridge answers
+        scenes.setOrientation(LinearLayout.VERTICAL);
+        scenes.setClipChildren(false);
+        panel.addView(scenes);
+        loadScenes(scenes);
         panel.addView(heading(R.string.brightness_title));
         panel.addView(brightnessBar(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(context, 44)));
         panel.addView(heading(R.string.color_title));
         panel.addView(swatches());
-        if (light.gradient) {
-            panel.addView(heading(R.string.palette_title));
-            panel.addView(chips(PALETTES, p -> v2(v2 -> v2.gradient(light.id, (int[]) p[1]))));
-        }
         if (light.color) {
+            List<Palettes.Palette> all = palettes(context);
+            List<CharSequence> names = new ArrayList<>();
+            List<int[]> looks = new ArrayList<>();
+            for (Palettes.Palette pal : all) {
+                names.add(pal.name);
+                looks.add(pal.colors);
+            }
+            panel.addView(heading(R.string.palette_title));
+            panel.addView(chips(names, looks, i -> applyPalette(all.get(i).colors)));
+            List<CharSequence> effects = new ArrayList<>();
+            for (Object[] e : EFFECTS) effects.add(context.getString((int) e[1]));
             panel.addView(heading(R.string.effect_title));
-            panel.addView(chips(EFFECTS, e -> v2(v2 -> v2.effect(light.id, (String) e[0]))));
+            panel.addView(chips(effects, null, i -> v2(v2 -> v2.effect(light.id, (String) EFFECTS[i][0]))));
         }
         // Five sections are taller than a 540 dp screen: the panel scrolls with focus.
         android.widget.ScrollView scroll = new android.widget.ScrollView(context);
@@ -203,20 +211,62 @@ final class LightPanel extends Dialog {
         }, this::done);
     }
 
-    /** A sideways row of named chips; each item is {label string id, payload}. */
-    private View chips(Object[][] items, java.util.function.Consumer<Object[]> onPick) {
+    /** Hue app scenes that include this lamp; the row appears only when there are some. */
+    private void loadScenes(LinearLayout box) {
+        hue.scenes(light.id, (list, error) -> {
+            if (error != null || list.isEmpty()) return;
+            List<CharSequence> names = new ArrayList<>();
+            for (Hue.Scene sc : list) names.add(sc.name);
+            box.addView(heading(R.string.scenes_title));
+            box.addView(chips(names, null, i -> hue.recall(list.get(i).id, this::done)));
+        });
+    }
+
+    /** A strip shows the whole palette along its length; a single lamp takes its first color. */
+    private void applyPalette(int[] colors) {
+        if (light.gradient) {
+            v2(v2 -> v2.gradient(light.id, Palettes.spread(colors, 5)));
+        } else {
+            int c = colors[0];
+            send(json("on", true, "xy", Colors.rgbToXy((c >> 16) & 255, (c >> 8) & 255, c & 255)));
+        }
+    }
+
+    private static synchronized List<Palettes.Palette> palettes(Context context) {
+        if (palettes == null) {
+            try (java.io.InputStream in = context.getResources().openRawResource(R.raw.hue_palettes)) {
+                palettes = Palettes.parse(Hue.read(in));
+            } catch (java.io.IOException e) {
+                Log.w("LightPanel", "palettes not read", e);
+                palettes = new ArrayList<>();
+            }
+        }
+        return palettes;
+    }
+
+    /** A sideways row of chips; looks (optional) paints each chip with its palette, left to right. */
+    private View chips(List<CharSequence> labels, List<int[]> looks, java.util.function.IntConsumer onPick) {
         LinearLayout row = new LinearLayout(context);
         row.setClipChildren(false);
         row.setClipToPadding(false);
         int v = Ui.dp(context, 6);
         row.setPadding(Ui.dp(context, 4), v, Ui.dp(context, 4), v);
-        for (Object[] item : items) {
+        for (int i = 0; i < labels.size(); i++) {
+            int index = i;
             TextView chip = Ui.text(context, 15, Ui.TEXT, false);
-            chip.setText(item[0] instanceof Integer ? (int) item[0] : (int) item[1]);
+            chip.setText(labels.get(i));
             chip.setGravity(Gravity.CENTER);
             chip.setPadding(Ui.dp(context, 18), 0, Ui.dp(context, 18), 0);
-            Ui.focusable(chip, Ui.rounded(context, Ui.CARD), null);
-            chip.setOnClickListener(x -> onPick.accept(item));
+            GradientDrawable bg = Ui.rounded(context, Ui.CARD);
+            if (looks != null) {
+                int[] argb = Palettes.spread(looks.get(i), Math.max(2, looks.get(i).length));
+                for (int k = 0; k < argb.length; k++) argb[k] |= 0xFF000000;
+                bg.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
+                bg.setColors(argb);
+                chip.setTextColor(0xFF111111); // the palettes are light, pastel colors
+            }
+            Ui.focusable(chip, bg, null);
+            chip.setOnClickListener(x -> onPick.accept(index));
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(context, 40));
             p.rightMargin = Ui.dp(context, 10);
             row.addView(chip, p);

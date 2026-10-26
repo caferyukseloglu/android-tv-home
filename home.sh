@@ -33,9 +33,10 @@ build() {
 run_tests() {
     mkdir -p build/test
     # Only the pure-Java classes: they run on the Mac's JVM without Android.
-    javac -d build/test src/io/github/caferyukseloglu/tvhome/{AppOrder,Colors}.java tools/*Test.java
+    javac -d build/test src/io/github/caferyukseloglu/tvhome/{AppOrder,Colors,Palettes}.java tools/*Test.java
     java -cp build/test "$PKG.AppOrderTest"
     java -cp build/test "$PKG.ColorsTest"
+    java -cp build/test "$PKG.PalettesTest"
 }
 
 install() {

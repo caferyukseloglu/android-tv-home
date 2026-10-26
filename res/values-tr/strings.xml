@@ -40,10 +40,6 @@
     <string name="panel_key_description">Işık panelini kumandadaki tek bir tuşla açar. Sadece o tuşu okur, ekrandaki hiçbir şeyi okumaz.</string>
     <string name="light_failed">Işık ayarlanamadı</string>
     <string name="palette_title">Paletler</string>
-    <string name="palette_prism">Prizma</string>
-    <string name="palette_sunset">Gün batımı</string>
-    <string name="palette_ocean">Okyanus</string>
-    <string name="palette_aurora">Aurora</string>
-    <string name="palette_neon">Neon</string>
     <string name="media_watch">Film modu renkleri</string>
+    <string name="scenes_title">Sahnelerin</string>
 </resources>

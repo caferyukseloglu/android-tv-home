@@ -15,7 +15,8 @@ import java.util.Map;
 
 /** The Lights row: one card per Hue lamp (OK switches, hold OK for color), or a status card while connecting. */
 final class LightsRow {
-    private static final long REFRESH_MS = 5000; // picks up switches flipped in the Hue app or on the wall
+    // Changes arrive live through the event stream; this slow poll only covers a dropped stream.
+    private static final long REFRESH_MS = 30000;
 
     private final Context context;
     private final Hue hue;
@@ -25,6 +26,7 @@ final class LightsRow {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Map<String, LightCard> cards = new LinkedHashMap<>();
     private final Runnable refresh = this::refresh;
+    private final EventStream events;
     private StatusCard status;
     private boolean resumed;
 
@@ -34,6 +36,7 @@ final class LightsRow {
         this.cardWidth = cardWidthDp;
         this.context = context;
         this.hue = new Hue(context);
+        this.events = new EventStream(context, this::refresh);
         this.row = row;
         this.film = film;
     }
@@ -42,6 +45,7 @@ final class LightsRow {
         resumed = true;
         if (hue.paired()) {
             refresh();
+            events.start();
         } else {
             showStatus(R.string.hue_connect, R.string.hue_connect_hint, this::connect);
         }
@@ -50,6 +54,7 @@ final class LightsRow {
     void pause() {
         resumed = false;
         main.removeCallbacks(refresh);
+        events.stop();
     }
 
     private void refreshSoon() {

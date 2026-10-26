@@ -11,6 +11,12 @@ sponsored rows, no tracking, no account. About 40 KB, plain Java, no libraries, 
 - **Film mode** for the light strip behind the TV: while a video app is open (Stremio, Netflix, YouTube,
   Prime Video, ...) the strip glows dim 6500 K white, the bias light video is mastered for, and goes
   back to how it was when you return Home. Hold OK on the strip and switch *Film mode* on.
+- **Palettes and scenes**: the 103 color palettes of the Hue app's built-in scenes (a gradient strip
+  shows the whole palette along its length) and the scenes you saved in the Hue app, one press away.
+- **Live**: changes from the Hue app, a wall switch or a voice assistant show up at once, through the
+  bridge's event stream.
+- **A lights panel from anywhere**: one remote key (on TCL remotes the 123 key) slides the lights in
+  from the right over whatever is playing. `./home.sh panel-key` turns it on.
 - Finds the Hue Bridge on its own (mDNS); pairing is one press of the bridge's button.
 
 ## Why not color the strip from the picture?
@@ -43,6 +49,12 @@ with its data) and remembers it in `.local/` for `restore`.
 ./home.sh build    # dist/android-tv-home.apk, signed with a local key in .signing/
 ./home.sh test     # the pure-Java parts (app order, color math) on your machine's JVM
 ```
+
+## Credits
+
+Palette colors in `res/raw/hue_palettes.txt` come from
+[labmonkey's dump of the Hue app scenes](https://gist.github.com/labmonkey/a641f6b339ed9a71bdced64b9af91ee8).
+The Hue API details follow the [OpenHue API](https://github.com/openhue/openhue-api) specification.
 
 ## License
 

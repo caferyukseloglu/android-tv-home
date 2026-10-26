@@ -40,10 +40,6 @@
     <string name="panel_key_description">Opens the lights panel with one remote key. Reads only that key; nothing on screen.</string>
     <string name="light_failed">The light could not be set</string>
     <string name="palette_title">Palettes</string>
-    <string name="palette_prism">Prism</string>
-    <string name="palette_sunset">Sunset</string>
-    <string name="palette_ocean">Ocean</string>
-    <string name="palette_aurora">Aurora</string>
-    <string name="palette_neon">Neon</string>
     <string name="media_watch">Film mode colors</string>
+    <string name="scenes_title">Your scenes</string>
 </resources>
