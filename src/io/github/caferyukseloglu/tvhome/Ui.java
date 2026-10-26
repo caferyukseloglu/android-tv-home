@@ -35,16 +35,21 @@ final class Ui {
         return d;
     }
 
-    /** Focused cards grow, lift and get a thin white outline, like tvOS. */
+    /** Focused cards grow, lift and get a white ring, like tvOS. */
     static void focusable(View v, GradientDrawable bg, View.OnFocusChangeListener also) {
         Context c = v.getContext();
+        // The ring is a foreground so it draws over app banners; on the background a banner would hide it.
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(bg.getShape());
+        if (bg.getShape() == GradientDrawable.RECTANGLE) ring.setCornerRadius(dp(c, 14));
         v.setFocusable(true);
         v.setBackground(bg);
+        v.setForeground(ring);
         v.setClipToOutline(true);
         v.setOnFocusChangeListener((view, has) -> {
             float scale = has ? 1.1f : 1f;
             view.animate().scaleX(scale).scaleY(scale).translationZ(has ? dp(c, 10) : 0).setDuration(140).start();
-            bg.setStroke(has ? dp(c, 2) : 0, TEXT);
+            ring.setStroke(has ? dp(c, 3) : 0, TEXT);
             if (also != null) also.onFocusChange(view, has);
         });
     }

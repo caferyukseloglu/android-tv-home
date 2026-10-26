@@ -174,6 +174,7 @@ public final class MainActivity extends Activity {
     private LinearLayout row() {
         LinearLayout r = new LinearLayout(this);
         r.setClipChildren(false);
+        r.setClipToPadding(false); // the padding is where the focus zoom grows into
         int v = Ui.dp(this, 20); // room for the focus zoom and its shadow, so nothing is cut
         r.setPadding(Ui.dp(this, EDGE), v, Ui.dp(this, EDGE), v);
         return r;
