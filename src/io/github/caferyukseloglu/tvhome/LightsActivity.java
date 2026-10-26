@@ -9,7 +9,10 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-/** The lights as a panel sliding in from the right, over whatever is playing. Back closes it. */
+/**
+ * The lights as a panel sliding in from the right, over whatever is playing. Back closes it.
+ * Nothing here may be clickable but the cards: on a TV a clickable view also takes focus, and OK on it would act.
+ */
 public final class LightsActivity extends Activity {
     private LightsRow lights;
 
@@ -40,7 +43,6 @@ public final class LightsActivity extends Activity {
 
         FrameLayout root = new FrameLayout(this);
         root.addView(scroll, new FrameLayout.LayoutParams(Ui.dp(this, 380), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END));
-        root.setOnClickListener(v -> finish());
         setContentView(root);
         lights = new LightsRow(this, cards, new FilmMode(this), 316);
     }

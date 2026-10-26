@@ -97,7 +97,8 @@ final class LightsRow {
         List<String> ids = new ArrayList<>();
         for (Hue.Light l : lights) ids.add(l.id);
         if (status != null || !ids.equals(new ArrayList<>(cards.keySet()))) {
-            boolean hadFocus = row.hasFocus();
+            // Take focus when the row had it, or when nothing on screen has it yet (the panel just opened).
+            boolean takeFocus = row.hasFocus() || row.getRootView().findFocus() == null;
             row.removeAllViews();
             cards.clear();
             status = null;
@@ -106,7 +107,7 @@ final class LightsRow {
                 cards.put(l.id, card);
                 row.addView(card.view, cardParams(cardWidth, 80));
             }
-            if (hadFocus) row.getChildAt(0).requestFocus();
+            if (takeFocus) row.getChildAt(0).requestFocus();
         }
         for (Hue.Light l : lights) cards.get(l.id).show(l);
     }
