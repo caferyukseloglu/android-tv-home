@@ -164,18 +164,9 @@ final class NowPlaying {
         art.setScaleType(ImageView.ScaleType.CENTER_CROP);
         art.setClipToOutline(true);
         art.setBackground(Ui.rounded(activity, Ui.CARD));
-        Bitmap b = m == null ? null : firstBitmap(m);
+        Bitmap b = m == null ? null : MediaWatch.firstBitmap(m);
         if (b != null) art.setImageDrawable(new BitmapDrawable(activity.getResources(), b));
         return art;
-    }
-
-    private static Bitmap firstBitmap(MediaMetadata m) {
-        for (String k : new String[] {MediaMetadata.METADATA_KEY_ART, MediaMetadata.METADATA_KEY_ALBUM_ART,
-                MediaMetadata.METADATA_KEY_DISPLAY_ICON}) {
-            Bitmap b = m.getBitmap(k);
-            if (b != null) return b;
-        }
-        return null;
     }
 
     private static boolean hasContent(MediaController c) {

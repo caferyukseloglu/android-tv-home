@@ -71,10 +71,12 @@ final class WeatherClient {
     private void locate() throws Exception {
         String city = Weather.city(TimeZone.getDefault().getID());
         if (city != null) {
-            JSONObject hit = get("https://geocoding-api.open-meteo.com/v1/search?count=1&name=" + URLEncoder.encode(city, "UTF-8"))
-                    .getJSONArray("results").getJSONObject(0);
-            store(hit.getDouble("latitude"), hit.getDouble("longitude"));
-            return;
+            org.json.JSONArray hits = get("https://geocoding-api.open-meteo.com/v1/search?count=1&name="
+                    + URLEncoder.encode(city, "UTF-8")).optJSONArray("results");
+            if (hits != null && hits.length() > 0) {
+                store(hits.getJSONObject(0).getDouble("latitude"), hits.getJSONObject(0).getDouble("longitude"));
+                return;
+            } // an unknown city falls through to the network's place
         }
         JSONObject ip = get("http://ip-api.com/json/?fields=status,lat,lon");
         if (!"success".equals(ip.optString("status"))) throw new IllegalStateException("no place for this network");

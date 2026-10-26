@@ -59,8 +59,19 @@ final class HueV2 {
 
     /** brightness 0-100 (negative keeps it), faded in over fadeMs. */
     void gradient(String v1Id, int[] colors, double brightness, int fadeMs) throws Exception {
+        String id = v2Id(v1Id);
+        if (id == null) throw new IOException("light " + v1Id + " is not a gradient strip");
+        gradientById(id, colors, brightness, fadeMs);
+    }
+
+    /** The strip's v2 id when it is a gradient light, else null. Look it up once and keep it. */
+    String v2Id(String v1Id) throws Exception {
         JSONObject l = find(v1Id);
-        if (l == null || !l.has("gradient")) throw new IOException("light " + v1Id + " is not a gradient strip");
+        return l != null && l.has("gradient") ? l.getString("id") : null;
+    }
+
+    /** Straight to a known v2 id: one PUT, no light list, for a drift step every 1.5 s. */
+    void gradientById(String v2Id, int[] colors, double brightness, int fadeMs) throws Exception {
         JSONArray points = new JSONArray();
         for (int c : colors) {
             double[] xy = Colors.rgbToXy((c >> 16) & 255, (c >> 8) & 255, c & 255);
@@ -72,7 +83,25 @@ final class HueV2 {
                 .put("gradient", new JSONObject().put("points", points))
                 .put("dynamics", new JSONObject().put("duration", fadeMs));
         if (brightness >= 0) body.put("dimming", new JSONObject().put("brightness", brightness));
-        https("PUT", "/" + l.getString("id"), body.toString());
+        https("PUT", "/" + v2Id, body.toString());
+    }
+
+    /**
+     * What v1 cannot save: the strip's gradient points and running effect, as a body that puts them
+     * back. Null when the strip shows a single color and no effect (v1 restores that fully).
+     */
+    JSONObject look(String v2Id) throws Exception {
+        JSONObject l = new JSONObject(https("GET", "/" + v2Id, null)).getJSONArray("data").getJSONObject(0);
+        JSONObject body = new JSONObject();
+        JSONArray points = l.optJSONObject("gradient") == null ? null : l.getJSONObject("gradient").optJSONArray("points");
+        if (points != null && points.length() > 0) body.put("gradient", new JSONObject().put("points", points));
+        String effect = l.optJSONObject("effects") == null ? "no_effect" : l.getJSONObject("effects").optString("status", "no_effect");
+        if (!"no_effect".equals(effect)) body.put("effects", new JSONObject().put("effect", effect));
+        return body.length() == 0 ? null : body;
+    }
+
+    void put(String v2Id, JSONObject body) throws Exception {
+        https("PUT", "/" + v2Id, body.toString());
     }
 
     /** v2 lights are keyed by UUID; the v1 id the rest of the app uses is in id_v1. */
@@ -105,7 +134,7 @@ final class HueV2 {
     }
 
     private String https(String method, String path, String body) throws IOException {
-        // No disconnect(): the kept-alive connection is reused by the next call.
+        // No disconnect(): while the same HueV2 is kept (film mode keeps one per video), the next call reuses the connection.
         HttpsURLConnection c = connect(base + path);
         c.setRequestMethod(method);
         if (body != null) {

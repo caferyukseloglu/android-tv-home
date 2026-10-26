@@ -13,6 +13,9 @@ import android.util.Log;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -25,6 +28,9 @@ import java.util.Set;
  * (or just the chosen strip when there is none) follows what is playing: 6500 K white at once, then
  * the cover's colors, made more vivid, drifting slowly along the strip and across the lamps with soft
  * fades. Back on Home every light returns to how it was. One instance per process: get(context).
+ *
+ * Threads: bridge work runs in order on Hue's network thread; the drift is scheduled on the main
+ * thread, one step after the last one finished, so a slow or missing bridge never piles work up.
  */
 final class FilmMode {
     // Apps that declare themselves as video get it too (ApplicationInfo.CATEGORY_VIDEO); many big ones don't.
@@ -38,20 +44,29 @@ final class FilmMode {
     private static final double VIVID = 1.5; // cover colors are often pastel; Hue looks best saturated
     private static final int MIN_BRI = 127; // 50%: a dark poster still lights the room
     private static final int MAX_BRI = 254;
+    private static final int COVER_PX = 160; // decode covers near this size; only 40x20 pixels are used
     private static final String TAG = "FilmMode";
 
-    /** package|title whose colors are on the lights; MediaWatch skips it, end() clears it. */
+    /** package|title|has-cover already on the lights; MediaWatch skips it, end() clears it. */
     static volatile String shown;
+    /** Home is in front: media playing now is background music, not a film to light. */
+    static volatile boolean homeVisible;
     private static FilmMode instance;
 
     private final Context context;
     private final Hue hue;
     private final SharedPreferences prefs;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final Runnable flow = this::flowStep;
     private volatile int[] palette; // the colors drifting now, null when nothing plays
     private volatile int bri = MAX_BRI;
+    // Main thread only: the drift chain.
+    private int generation; // a new chain or end() bumps it; an older chain stops at its next step
+    private boolean drifting;
+    private boolean isPlaying = true;
     private int step;
+    // Network thread only: one bridge connection and the strip's v2 id per video session.
+    private HueV2 v2;
+    private String stripV2;
 
     static synchronized FilmMode get(Context context) {
         if (instance == null) instance = new FilmMode(context.getApplicationContext());
@@ -86,7 +101,7 @@ final class FilmMode {
     /** A video app is playing with this cover: its colors start drifting over the lights. */
     void content(String pkg, Bitmap art, String uri) {
         String id = light();
-        if (id == null || !isVideo(pkg)) return;
+        if (id == null || !isVideo(pkg) || homeVisible) return;
         hue.async(() -> {
             saveOnce(id);
             Bitmap cover = art != null ? art : load(uri);
@@ -103,63 +118,77 @@ final class FilmMode {
             Log.i(TAG, pkg + ": cover " + (art != null ? "bitmap" : uri) + " -> " + hex(colors) + " bri " + bri);
             palette = colors;
             main.post(() -> {
-                main.removeCallbacks(flow);
-                flowStep();
+                if (!drifting) startDrift();
             });
             return null;
         }, FilmMode::log);
-    }
-
-    /** One step of the drift: the strip's points move along by one, each lamp takes the next color. */
-    private void flowStep() {
-        int[] colors = palette;
-        String id = prefs.getString("savedLight", null);
-        if (colors == null || id == null) return;
-        int[] now = Colors.rotate(colors, step++);
-        hue.async(() -> {
-            List<String> area = area();
-            for (int i = 0; i < area.size(); i++) {
-                String l = area.get(i);
-                if (l.equals(id)) {
-                    new HueV2(context).gradient(l, now, bri * 100.0 / 254, (int) FLOW_MS);
-                } else {
-                    int c = now[i % now.length];
-                    hue.putState(l, LightPanel.json("on", true, "bri", bri, "transitiontime", (int) (FLOW_MS / 100),
-                            "xy", Colors.rgbToXy((c >> 16) & 255, (c >> 8) & 255, c & 255)));
-                }
-            }
-            return null;
-        }, FilmMode::log);
-        main.postDelayed(flow, FLOW_MS);
     }
 
     /**
      * Pause and resume follow the player: a paused video or a TV gone to standby stops the drift,
      * so the lights are not changed all night behind a dark screen.
      */
-    void playing(boolean isPlaying) {
+    void playing(boolean nowPlaying) {
         main.post(() -> {
-            main.removeCallbacks(flow);
-            if (isPlaying && palette != null) main.postDelayed(flow, FLOW_MS);
+            isPlaying = nowPlaying;
+            if (nowPlaying && !drifting && palette != null) startDrift();
+        });
+    }
+
+    private void startDrift() {
+        drifting = true;
+        int chain = ++generation;
+        main.postDelayed(() -> flowStep(chain), FLOW_MS);
+    }
+
+    /** One step: the strip's points move along by one, each lamp takes the next color. The next step is planned when this one is done. */
+    private void flowStep(int chain) {
+        int[] colors = palette;
+        if (chain != generation || colors == null || !isPlaying) {
+            if (chain == generation) drifting = false;
+            return;
+        }
+        int[] now = Colors.rotate(colors, step++);
+        int level = bri;
+        hue.async(() -> {
+            List<String> area = area();
+            for (int i = 0; i < area.size(); i++) {
+                String l = area.get(i);
+                if (i == 0 && stripV2 != null) { // the strip leads the area (saveOnce puts it first)
+                    v2.gradientById(stripV2, now, level * 100.0 / 254, (int) FLOW_MS);
+                } else {
+                    int c = now[i % now.length];
+                    hue.putState(l, LightPanel.json("on", true, "bri", level, "transitiontime", (int) (FLOW_MS / 100),
+                            "xy", Colors.rgbToXy((c >> 16) & 255, (c >> 8) & 255, c & 255)));
+                }
+            }
+            return null;
+        }, (ok, error) -> {
+            log(null, error);
+            if (chain == generation) main.postDelayed(() -> flowStep(chain), FLOW_MS);
         });
     }
 
     /** Back on Home: stop the drift and put every light back exactly once. */
     void end() {
         palette = null;
-        main.removeCallbacks(flow);
+        generation++;
+        drifting = false;
         hue.async(() -> {
+            palette = null; // a cover that finished loading after Home must not drift during the next video
             String saved = prefs.getString("saved", null);
-            if (saved == null) return null;
-            JSONObject states = new JSONObject(saved);
-            if (states.has("on")) { // saved by the single-strip version: one state, not a map of them
-                states = new JSONObject().put(prefs.getString("savedLight", ""), states);
+            if (saved != null) {
+                JSONObject states = new JSONObject(saved);
+                for (Iterator<String> it = states.keys(); it.hasNext(); ) {
+                    String l = it.next();
+                    hue.putState(l, restore(states.getJSONObject(l)));
+                }
+                String look = prefs.getString("stripLook", null);
+                if (look != null && v2 != null && stripV2 != null) v2.put(stripV2, new JSONObject(look));
+                prefs.edit().remove("saved").remove("area").remove("stripLook").commit();
             }
-            for (Iterator<String> it = states.keys(); it.hasNext(); ) {
-                String l = it.next();
-                hue.putState(l, restore(states.getJSONObject(l)));
-            }
-            prefs.edit().remove("saved").remove("savedLight").remove("area").commit();
+            v2 = null;
+            stripV2 = null;
             shown = null; // the same video played again after Home gets its colors again
             return null;
         }, FilmMode::log);
@@ -167,34 +196,72 @@ final class FilmMode {
 
     /**
      * Remembers every light of the strip's entertainment area once per video session (a second video
-     * keeps the first memory) and returns them. Blocking: runs on Hue's network thread.
+     * keeps the first memory), plus the strip's gradient and effect, which v1 cannot see. Blocking.
      */
     private List<String> saveOnce(String id) throws Exception {
+        if (v2 == null) {
+            v2 = new HueV2(context);
+            stripV2 = v2.v2Id(id);
+        }
         if (!prefs.contains("saved")) {
             List<String> area = hue.entertainmentArea(id);
             JSONObject states = new JSONObject();
             for (String l : area) states.put(l, hue.lightState(l));
-            prefs.edit().putString("saved", states.toString()).putString("savedLight", id)
-                    .putString("area", new JSONArray(area).toString()).commit();
+            JSONObject look = stripV2 == null ? null : v2.look(stripV2);
+            prefs.edit().putString("saved", states.toString()).putString("area", new JSONArray(area).toString())
+                    .putString("stripLook", look == null ? null : look.toString()).commit();
         }
         return area();
     }
 
     private List<String> area() throws Exception {
-        // A session saved by the single-strip version has no area: it drives just the strip.
-        JSONArray a = new JSONArray(prefs.getString("area", new JSONArray().put(prefs.getString("savedLight", "")).toString()));
+        JSONArray a = new JSONArray(prefs.getString("area", "[]"));
         List<String> out = new ArrayList<>();
         for (int i = 0; i < a.length(); i++) out.add(a.getString(i));
         return out;
     }
 
-    private Bitmap load(String uri) throws java.io.IOException {
+    /**
+     * A cover given as an address: bounded in time (it runs on the bridge's thread) and decoded
+     * small, so a slow server cannot stall the lights and a huge poster cannot run out of memory.
+     */
+    private Bitmap load(String uri) {
         if (uri == null) return null;
-        java.io.InputStream in = uri.startsWith("http")
-                ? new java.net.URL(uri).openStream()
-                : context.getContentResolver().openInputStream(android.net.Uri.parse(uri));
-        try (java.io.InputStream stream = in) {
-            return BitmapFactory.decodeStream(stream);
+        try {
+            byte[] data;
+            if (uri.startsWith("http")) {
+                HttpURLConnection c = (HttpURLConnection) new URL(uri).openConnection();
+                c.setConnectTimeout(4000);
+                c.setReadTimeout(4000);
+                try {
+                    data = bytes(c.getInputStream());
+                } finally {
+                    c.disconnect();
+                }
+            } else {
+                data = bytes(context.getContentResolver().openInputStream(android.net.Uri.parse(uri)));
+            }
+            BitmapFactory.Options size = new BitmapFactory.Options();
+            size.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(data, 0, data.length, size);
+            BitmapFactory.Options small = new BitmapFactory.Options();
+            small.inSampleSize = Math.max(1, Math.min(size.outWidth, size.outHeight) / COVER_PX);
+            return BitmapFactory.decodeByteArray(data, 0, data.length, small);
+        } catch (Exception | OutOfMemoryError e) {
+            Log.w(TAG, "cover not loaded: " + uri, e);
+            return null;
+        }
+    }
+
+    private static byte[] bytes(InputStream stream) throws java.io.IOException {
+        try (InputStream in = stream) {
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            for (int n; in != null && (n = in.read(chunk)) > 0; ) {
+                out.write(chunk, 0, n);
+                if (out.size() > 8 * 1024 * 1024) throw new java.io.IOException("cover larger than 8 MB");
+            }
+            return out.toByteArray();
         }
     }
 

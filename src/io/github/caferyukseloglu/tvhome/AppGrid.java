@@ -51,6 +51,7 @@ final class AppGrid {
     }
 
     void show(String focusPkg) {
+        moving = null; // the cards are rebuilt: a move in progress would point at a card that is gone
         cells.clear();
         View focus = null;
         for (Apps.App app : apps.load()) {

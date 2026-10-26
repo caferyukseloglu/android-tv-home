@@ -87,6 +87,12 @@ public final class MediaWatch extends NotificationListenerService {
         film.content(c.getPackageName(), art, uri);
     }
 
+    /** The first cover picture a session offers; Now Playing uses the same choice. */
+    static Bitmap firstBitmap(MediaMetadata m) {
+        return firstBitmap(m, MediaMetadata.METADATA_KEY_ART, MediaMetadata.METADATA_KEY_ALBUM_ART,
+                MediaMetadata.METADATA_KEY_DISPLAY_ICON);
+    }
+
     private static Bitmap firstBitmap(MediaMetadata m, String... keys) {
         for (String k : keys) {
             Bitmap b = m.getBitmap(k);

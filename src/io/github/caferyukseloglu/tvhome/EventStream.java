@@ -23,7 +23,7 @@ final class EventStream {
     private final Context context;
     private final Runnable onChange;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private volatile boolean running;
+    private volatile Thread worker; // the one live reader; any other thread still looping exits
     private volatile HttpURLConnection open;
 
     EventStream(Context context, Runnable onChange) {
@@ -32,24 +32,24 @@ final class EventStream {
     }
 
     void start() {
-        if (running) return;
-        running = true;
-        new Thread(this::loop, TAG).start();
+        if (worker != null) return;
+        worker = new Thread(this::loop, TAG);
+        worker.start();
     }
 
     void stop() {
-        running = false;
+        worker = null;
         HttpURLConnection c = open;
         if (c != null) c.disconnect(); // unblocks the reading thread
         main.removeCallbacks(onChange);
     }
 
     private void loop() {
-        while (running) {
+        while (worker == Thread.currentThread()) {
             try {
                 open = new HueV2(context).events();
                 try (BufferedReader in = new BufferedReader(new InputStreamReader(open.getInputStream(), StandardCharsets.UTF_8))) {
-                    for (String line; running && (line = in.readLine()) != null; ) {
+                    for (String line; worker == Thread.currentThread() && (line = in.readLine()) != null; ) {
                         if (line.startsWith("data:")) {
                             main.removeCallbacks(onChange);
                             main.postDelayed(onChange, SETTLE_MS);
@@ -57,9 +57,9 @@ final class EventStream {
                     }
                 }
             } catch (Exception e) {
-                if (running) Log.w(TAG, "stream dropped, retrying", e);
+                if (worker == Thread.currentThread()) Log.w(TAG, "stream dropped, retrying", e);
             }
-            if (running) sleep();
+            if (worker == Thread.currentThread()) sleep();
         }
     }
 

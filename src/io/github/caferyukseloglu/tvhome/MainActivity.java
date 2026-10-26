@@ -81,6 +81,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        FilmMode.homeVisible = true;
         film.end(); // back on Home: the TV lights return to how they were
         grid.show(null);
         lights.resume();
@@ -90,6 +91,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
+        FilmMode.homeVisible = false;
         lights.pause();
         nowPlaying.pause();
         super.onPause();
