@@ -37,7 +37,7 @@ final class Ui {
 
     /** Focused cards grow, lift and get a white ring, like tvOS. */
     static void focusable(View v, GradientDrawable bg, View.OnFocusChangeListener also) {
-        focusable(v, bg, also, 1.1f);
+        focusable(v, bg, also, 1.08f);
     }
 
     /** zoom 1 for wide controls (a full-width bar) that would grow past their panel. */
@@ -52,9 +52,9 @@ final class Ui {
         v.setForeground(ring);
         v.setClipToOutline(true);
         v.setOnFocusChangeListener((view, has) -> {
-            float scale = has ? zoom : 1f;
-            view.animate().scaleX(scale).scaleY(scale).translationZ(has ? dp(c, 10) : 0).setDuration(140).start();
-            ring.setStroke(has ? dp(c, 3) : 0, TEXT);
+            float scale = has ? zoom : 1f; // 1.08: a lift, not a jump
+            view.animate().scaleX(scale).scaleY(scale).translationZ(has ? dp(c, 16) : 0).setDuration(180).start();
+            ring.setStroke(has ? dp(c, 2) : 0, 0xCCFFFFFF);
             if (also != null) also.onFocusChange(view, has);
         });
     }
