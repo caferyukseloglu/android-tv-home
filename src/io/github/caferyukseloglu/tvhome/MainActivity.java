@@ -109,6 +109,7 @@ public final class MainActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setClipChildren(false);
+        header.setClipToPadding(false); // the focused Settings pill grows into the margin
         header.setPadding(Ui.dp(this, EDGE), 0, Ui.dp(this, EDGE), 0);
         header.addView(date, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         header.addView(time);

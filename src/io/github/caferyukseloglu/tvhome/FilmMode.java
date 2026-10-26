@@ -34,7 +34,7 @@ final class FilmMode {
             "com.kick.mobile", "ar.tvplayer.tv", "com.plexapp.android", "org.xbmc.kodi", "com.google.android.videos"));
     // Full brightness by choice of the owner: dim it from the light panel when the room is dark.
     private static final JSONObject BIAS = LightPanel.json("on", true, "ct", 153, "bri", 254); // 6500 K
-    private static final long FLOW_MS = 3000; // one soft step every 3 s, faded over the same 3 s
+    private static final long FLOW_MS = 1500; // one soft step every 1.5 s, faded over the same 1.5 s
     private static final double VIVID = 1.5; // cover colors are often pastel; Hue looks best saturated
     private static final int MIN_BRI = 127; // 50%: a dark poster still lights the room
     private static final int MAX_BRI = 254;

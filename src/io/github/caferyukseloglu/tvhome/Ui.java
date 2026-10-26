@@ -43,13 +43,16 @@ final class Ui {
     /** zoom 1 for wide controls (a full-width bar) that would grow past their panel. */
     static void focusable(View v, GradientDrawable bg, View.OnFocusChangeListener also, float zoom) {
         Context c = v.getContext();
-        // The ring is a foreground so it draws over app banners; on the background a banner would hide it.
-        GradientDrawable ring = new GradientDrawable();
-        ring.setShape(bg.getShape());
-        if (bg.getShape() == GradientDrawable.RECTANGLE) ring.setCornerRadius(dp(c, 14));
+        // Over app banners the ring must be a foreground, or the banner would hide it. A plain text
+        // button has nothing on top, and its padding would push a foreground ring inside: it uses the background.
+        GradientDrawable ring = v instanceof TextView ? bg : new GradientDrawable();
+        if (ring != bg) {
+            ring.setShape(bg.getShape());
+            if (bg.getShape() == GradientDrawable.RECTANGLE) ring.setCornerRadius(dp(c, 14));
+            v.setForeground(ring);
+        }
         v.setFocusable(true);
         v.setBackground(bg);
-        v.setForeground(ring);
         v.setClipToOutline(true);
         v.setOnFocusChangeListener((view, has) -> {
             float scale = has ? zoom : 1f; // 1.08: a lift, not a jump

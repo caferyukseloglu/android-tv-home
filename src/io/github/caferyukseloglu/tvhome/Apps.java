@@ -80,6 +80,15 @@ final class Apps {
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 
+    /** Apps the user installed can be uninstalled; the TV's own (system) apps cannot. */
+    boolean removable(String pkg) {
+        try {
+            return (pm.getApplicationInfo(pkg, 0).flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0;
+        } catch (PackageManager.NameNotFoundException gone) {
+            return false;
+        }
+    }
+
     void toggleHidden(String pkg) {
         Set<String> next = new HashSet<>(hidden());
         if (!next.remove(pkg)) next.add(pkg);

@@ -2,6 +2,8 @@ package io.github.caferyukseloglu.tvhome;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.Intent;
+import android.net.Uri;
 import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -147,6 +149,11 @@ final class AppGrid {
             apps.toggleHidden(app.pkg);
             show(app.pkg);
         }));
+        if (apps.removable(app.pkg)) list.addView(menuItem(R.string.uninstall, () -> {
+            menu.dismiss();
+            // Android's own uninstall prompt; Home reloads the grid when it comes back.
+            activity.startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + app.pkg)));
+        }));
         menu.setContentView(list, new ViewGroup.LayoutParams(Ui.dp(activity, 320), ViewGroup.LayoutParams.WRAP_CONTENT));
         menu.getWindow().setBackgroundDrawable(new ColorDrawable(0));
         menu.show();
@@ -178,7 +185,8 @@ final class AppGrid {
     /** True when the key was used for moving; the activity then passes nothing on. */
     boolean onKey(KeyEvent event) {
         if (moving == null) return false;
-        if (event.getAction() != KeyEvent.ACTION_DOWN) return true;
+        // One step per press: a held key repeats ~20 times a second, far too fast to follow.
+        if (event.getAction() != KeyEvent.ACTION_DOWN || event.getRepeatCount() > 0) return true;
         int from = cells.indexOf(moving);
         int to;
         switch (event.getKeyCode()) {
