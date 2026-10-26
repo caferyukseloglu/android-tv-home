@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build, test and install the home screen with the SDK's own tools (no Gradle).
-#   ./home.sh build | test | install | home | restore      (adb target: ANDROID_SERIAL)
+#   ./home.sh build | test | install | home | panel-key | restore      (adb target: ANDROID_SERIAL)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -63,6 +63,19 @@ home() {
     adb shell input keyevent KEYCODE_HOME
 }
 
+# One remote key opens the lights panel from anywhere (an accessibility service that sees keys only).
+panel_key() {
+    local service="$PKG/.PanelKey"
+    # TCL blocks third-party services from being bound unless this TCL-only app op allows it.
+    adb shell appops set "$PKG" APP_AUTO_START allow 2>/dev/null || true
+    local enabled
+    enabled=$(adb shell settings get secure enabled_accessibility_services)
+    if [[ "$enabled" == "null" || -z "$enabled" ]]; then enabled="$service"
+    elif [[ "$enabled" != *"$service"* ]]; then enabled="$enabled:$service"; fi
+    adb shell settings put secure enabled_accessibility_services "$enabled"
+    adb shell settings put secure accessibility_enabled 1
+}
+
 restore() {
     if [ -f .local/disabled-launchers.txt ]; then
         while read -r launcher; do adb shell pm enable --user 0 "$launcher"; done < .local/disabled-launchers.txt
@@ -84,6 +97,7 @@ case "${1:-}" in
     test) run_tests ;;
     install) install ;;
     home) home ;;
+    panel-key) panel_key ;;
     restore) restore ;;
-    *) echo "usage: $0 build|test|install|home|restore"; exit 1 ;;
+    *) echo "usage: $0 build|test|install|home|panel-key|restore"; exit 1 ;;
 esac

@@ -28,7 +28,10 @@ final class LightsRow {
     private StatusCard status;
     private boolean resumed;
 
-    LightsRow(Context context, LinearLayout row, FilmMode film) {
+    private final int cardWidth; // dp; the side panel stacks wider cards than the home row
+
+    LightsRow(Context context, LinearLayout row, FilmMode film, int cardWidthDp) {
+        this.cardWidth = cardWidthDp;
         this.context = context;
         this.hue = new Hue(context);
         this.row = row;
@@ -101,7 +104,7 @@ final class LightsRow {
             for (Hue.Light l : lights) {
                 LightCard card = new LightCard();
                 cards.put(l.id, card);
-                row.addView(card.view, cardParams(168, 80));
+                row.addView(card.view, cardParams(cardWidth, 80));
             }
             if (hadFocus) row.getChildAt(0).requestFocus();
         }
@@ -115,7 +118,7 @@ final class LightsRow {
             row.removeAllViews();
             cards.clear();
             status = new StatusCard();
-            row.addView(status.view, cardParams(360, 80));
+            row.addView(status.view, cardParams(Math.max(cardWidth, 300), 80));
             if (hadFocus) status.view.requestFocus();
         }
         status.show(title, hint, action);
@@ -123,7 +126,8 @@ final class LightsRow {
 
     private LinearLayout.LayoutParams cardParams(int widthDp, int heightDp) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(Ui.dp(context, widthDp), Ui.dp(context, heightDp));
-        p.rightMargin = Ui.dp(context, 16);
+        if (row.getOrientation() == LinearLayout.VERTICAL) p.bottomMargin = Ui.dp(context, 14);
+        else p.rightMargin = Ui.dp(context, 16);
         return p;
     }
 

@@ -55,7 +55,7 @@ public final class MainActivity extends Activity {
         root.addView(content);
         setContentView(root);
         film = new FilmMode(this);
-        lights = new LightsRow(this, lightRow, film);
+        lights = new LightsRow(this, lightRow, film, 168);
     }
 
     @Override

@@ -13,7 +13,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Bias lighting: while a video app is open, the chosen lamp (the strip behind the TV) glows dim
+ * Bias lighting: while a video app is open, the chosen lamp (the strip behind the TV) glows
  * 6500 K white, the white video is mastered for; back on Home it returns to how it was.
  * Both steps run on Hue's single network thread, so a quick return can never overtake the start.
  */
@@ -23,7 +23,8 @@ final class FilmMode {
             "com.stremio.one", "com.netflix.ninja", "com.google.android.youtube.tv", "com.amazon.amazonvideo.livingroom",
             "com.wbd.stream", "com.disney.disneyplus", "com.dsmart.blu.android", "com.upst.hayu", "tv.twitch.android.app",
             "com.kick.mobile", "ar.tvplayer.tv", "com.plexapp.android", "org.xbmc.kodi", "com.google.android.videos"));
-    private static final JSONObject BIAS = LightPanel.json("on", true, "ct", 153, "bri", 51); // 6500 K at 20%
+    // Full brightness by choice of the owner: dim it from the light panel when the room is dark.
+    private static final JSONObject BIAS = LightPanel.json("on", true, "ct", 153, "bri", 254); // 6500 K
 
     private final Context context;
     private final Hue hue;

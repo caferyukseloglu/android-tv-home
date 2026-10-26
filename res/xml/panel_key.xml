@@ -1,0 +1,5 @@
+<!-- Key events only: no window content, no accessibility events. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/panel_key_description"
+    android:canRequestFilterKeyEvents="true"
+    android:accessibilityFlags="flagRequestFilterKeyEvents" />
