@@ -41,6 +41,10 @@ run_tests() {
 install() {
     build
     adb install -r "$APK"
+    # TCL blocks third-party services from being bound unless this TCL-only app op allows it.
+    adb shell appops set "$PKG" APP_AUTO_START allow 2>/dev/null || true
+    # Film mode reads what is playing (title, cover) through a notification listener.
+    adb shell cmd notification allow_listener "$PKG/.MediaWatch"
 }
 
 # Make this the home screen. If the TV still opens its own launcher, switch that launcher off
@@ -66,8 +70,6 @@ home() {
 # One remote key opens the lights panel from anywhere (an accessibility service that sees keys only).
 panel_key() {
     local service="$PKG/.PanelKey"
-    # TCL blocks third-party services from being bound unless this TCL-only app op allows it.
-    adb shell appops set "$PKG" APP_AUTO_START allow 2>/dev/null || true
     local enabled
     enabled=$(adb shell settings get secure enabled_accessibility_services)
     if [[ "$enabled" == "null" || -z "$enabled" ]]; then enabled="$service"

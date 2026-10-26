@@ -40,6 +40,14 @@ final class LightPanel extends Dialog {
         {"opal", R.string.effect_opal}, {"prism", R.string.effect_prism}, {"underwater", R.string.effect_underwater},
         {"cosmos", R.string.effect_cosmos}, {"enchant", R.string.effect_enchant},
     };
+    /** Multi-color looks for gradient strips, start to end. */
+    private static final Object[][] PALETTES = {
+        {R.string.palette_prism, new int[] {0xFF2D55, 0xFF9500, 0xFFD60A, 0x34C759, 0x0A84FF}},
+        {R.string.palette_sunset, new int[] {0xFF5E3A, 0xFF8A00, 0xFFB46B, 0xFF2D92, 0x8E44FF}},
+        {R.string.palette_ocean, new int[] {0x003CFF, 0x00A2FF, 0x30D5C8, 0x0A84FF, 0x5E5CE6}},
+        {R.string.palette_aurora, new int[] {0x34C759, 0x30D5C8, 0x5E5CE6, 0xBF5AF2, 0x34C759}},
+        {R.string.palette_neon, new int[] {0xFF2D92, 0xBF5AF2, 0x0A84FF, 0xBF5AF2, 0xFF2D92}},
+    };
     private static final int STEP = 25; // brightness step on the 1-254 scale, about 10%
 
     private final Context context;
@@ -78,11 +86,20 @@ final class LightPanel extends Dialog {
         panel.addView(brightnessBar(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(context, 44)));
         panel.addView(heading(R.string.color_title));
         panel.addView(swatches());
+        if (light.gradient) {
+            panel.addView(heading(R.string.palette_title));
+            panel.addView(chips(PALETTES, p -> v2(v2 -> v2.gradient(light.id, (int[]) p[1]))));
+        }
         if (light.color) {
             panel.addView(heading(R.string.effect_title));
-            panel.addView(effects());
+            panel.addView(chips(EFFECTS, e -> v2(v2 -> v2.effect(light.id, (String) e[0]))));
         }
-        setContentView(panel, new ViewGroup.LayoutParams(Ui.dp(context, 640), ViewGroup.LayoutParams.WRAP_CONTENT));
+        // Five sections are taller than a 540 dp screen: the panel scrolls with focus.
+        android.widget.ScrollView scroll = new android.widget.ScrollView(context);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipChildren(false);
+        scroll.addView(panel);
+        setContentView(scroll, new ViewGroup.LayoutParams(Ui.dp(context, 640), ViewGroup.LayoutParams.WRAP_CONTENT));
         getWindow().setBackgroundDrawable(new ColorDrawable(0));
         showBrightness();
     }
@@ -96,7 +113,7 @@ final class LightPanel extends Dialog {
     private TextView heading(int res) {
         TextView t = Ui.text(context, 14, Ui.TEXT_DIM, false);
         t.setText(res);
-        t.setPadding(0, Ui.dp(context, 18), 0, Ui.dp(context, 8));
+        t.setPadding(0, Ui.dp(context, 14), 0, Ui.dp(context, 6));
         return t;
     }
 
@@ -174,31 +191,38 @@ final class LightPanel extends Dialog {
         return row;
     }
 
-    /** Effect chips scroll sideways: eleven of them do not fit the panel's width. */
-    private View effects() {
+    interface V2Call {
+        void run(HueV2 v2) throws Exception;
+    }
+
+    /** Effects and gradients exist only in Hue's v2 API; run on the shared network thread. */
+    private void v2(V2Call call) {
+        hue.async(() -> {
+            call.run(new HueV2(context));
+            return null;
+        }, this::done);
+    }
+
+    /** A sideways row of named chips; each item is {label string id, payload}. */
+    private View chips(Object[][] items, java.util.function.Consumer<Object[]> onPick) {
         LinearLayout row = new LinearLayout(context);
         row.setClipChildren(false);
         row.setClipToPadding(false);
         int v = Ui.dp(context, 6);
         row.setPadding(Ui.dp(context, 4), v, Ui.dp(context, 4), v);
-        for (Object[] e : EFFECTS) {
+        for (Object[] item : items) {
             TextView chip = Ui.text(context, 15, Ui.TEXT, false);
-            chip.setText((int) e[1]);
+            chip.setText(item[0] instanceof Integer ? (int) item[0] : (int) item[1]);
             chip.setGravity(Gravity.CENTER);
             chip.setPadding(Ui.dp(context, 18), 0, Ui.dp(context, 18), 0);
             Ui.focusable(chip, Ui.rounded(context, Ui.CARD), null);
-            String name = (String) e[0];
-            chip.setOnClickListener(x -> hue.async(() -> {
-                new HueV2(context).effect(light.id, name);
-                return null;
-            }, this::done));
+            chip.setOnClickListener(x -> onPick.accept(item));
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(context, 40));
             p.rightMargin = Ui.dp(context, 10);
             row.addView(chip, p);
         }
         HorizontalScrollView scroller = new HorizontalScrollView(context);
         scroller.setHorizontalScrollBarEnabled(false);
-        scroller.setClipChildren(false);
         scroller.setClipToPadding(false);
         scroller.addView(row);
         return scroller;

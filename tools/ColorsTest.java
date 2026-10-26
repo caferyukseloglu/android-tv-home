@@ -13,7 +13,16 @@ public final class ColorsTest {
         check(((back >> 16) & 255) == 255 && ((back >> 8) & 255) < 60 && (back & 255) < 60, "red survives a round trip: " + Integer.toHexString(back));
         check(Colors.ctToRgb(500) == 0xFFB46B && Colors.ctToRgb(100) == 0xDDE8FF, "ct clamps to warm and cool");
 
-        System.out.println("ColorsTest: 5 passed");
+        // 10x2 image: left half red, right half blue -> palette runs red ... blue, vivid.
+        int[] img = new int[20];
+        for (int i = 0; i < 20; i++) img[i] = (i % 10) < 5 ? 0xFF800000 : 0xFF000080;
+        int[] pal = Colors.palette(img, 10, 2, 5);
+        check(pal.length == 5, "five strip points");
+        check(((pal[0] >> 16) & 255) > 200 && (pal[0] & 255) < 40, "left point is a bright red: " + Integer.toHexString(pal[0]));
+        check((pal[4] & 255) > 200 && ((pal[4] >> 16) & 255) < 40, "right point is a bright blue: " + Integer.toHexString(pal[4]));
+        int[] dark = Colors.palette(new int[20], 10, 2, 5);
+        check(dark[2] != 0, "a black cover still gives a visible color, not off");
+        System.out.println("ColorsTest: 9 passed");
     }
 
     private static boolean near(double a, double b, double tolerance) {

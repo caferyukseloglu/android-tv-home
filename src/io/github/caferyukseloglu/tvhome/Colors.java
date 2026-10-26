@@ -46,6 +46,30 @@ final class Colors {
         return (r << 16) | (g << 8) | bl;
     }
 
+    /**
+     * n colors across an image, left to right, for a gradient strip: each vertical band averaged,
+     * then brought to full brightness so a dark poster still lights the strip. Black bands become warm white.
+     */
+    static int[] palette(int[] argb, int w, int h, int n) {
+        int[] out = new int[n];
+        for (int band = 0; band < n; band++) {
+            long r = 0, g = 0, b = 0;
+            int count = 0;
+            for (int y = 0; y < h; y++) {
+                for (int x = band * w / n; x < (band + 1) * w / n; x++) {
+                    int c = argb[y * w + x];
+                    r += (c >> 16) & 255;
+                    g += (c >> 8) & 255;
+                    b += c & 255;
+                    count++;
+                }
+            }
+            long max = Math.max(r, Math.max(g, b));
+            out[band] = max == 0 ? WARM : (int) (r * 255 / max) << 16 | (int) (g * 255 / max) << 8 | (int) (b * 255 / max);
+        }
+        return out;
+    }
+
     private static double linear(double c) {
         return c > 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92;
     }

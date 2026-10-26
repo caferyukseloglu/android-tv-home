@@ -50,6 +50,22 @@ final class HueV2 {
                 .toString());
     }
 
+    /** colors: 0xRRGGBB along a gradient strip, start to end. Ends any running effect. */
+    void gradient(String v1Id, int[] colors) throws Exception {
+        JSONObject l = find(v1Id);
+        if (l == null || !l.has("gradient")) throw new IOException("light " + v1Id + " is not a gradient strip");
+        JSONArray points = new JSONArray();
+        for (int c : colors) {
+            double[] xy = Colors.rgbToXy((c >> 16) & 255, (c >> 8) & 255, c & 255);
+            points.put(new JSONObject().put("color", new JSONObject().put("xy", new JSONObject().put("x", xy[0]).put("y", xy[1]))));
+        }
+        https("PUT", "/" + l.getString("id"), new JSONObject()
+                .put("on", new JSONObject().put("on", true))
+                .put("effects", new JSONObject().put("effect", "no_effect"))
+                .put("gradient", new JSONObject().put("points", points))
+                .toString());
+    }
+
     /** v2 lights are keyed by UUID; the v1 id the rest of the app uses is in id_v1. */
     private JSONObject find(String v1Id) throws Exception {
         JSONArray lights = new JSONObject(https("GET", "", null)).getJSONArray("data");
