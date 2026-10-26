@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Home</string>
+    <string name="lights">Lights</string>
+    <string name="apps">Apps</string>
+    <string name="settings">Settings</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="unreachable">Off at the switch</string>
+    <string name="hue_connect">Connect Hue</string>
+    <string name="hue_connect_hint">Lights behind the TV and in every room</string>
+    <string name="hue_searching">Looking for the Hue Bridge…</string>
+    <string name="hue_press">Press the button on the Hue Bridge</string>
+    <string name="hue_not_found">No Hue Bridge found. OK to retry.</string>
+    <string name="hue_offline">Hue Bridge not reachable. OK to retry.</string>
+    <string name="hue_not_pressed">The button was not pressed. OK to try again.</string>
+    <string name="hidden">Hidden. Hold OK to show again.</string>
+    <string name="hue_no_lights">No lights on the Hue Bridge yet</string>
+    <string name="on_percent">On · %1$d%%</string>
+    <string name="brightness">Brightness  %1$d%%</string>
+    <string name="ambilight">Screen sync</string>
+    <string name="ambilight_start">Color with the picture</string>
+    <string name="ambilight_stop">Stop screen sync</string>
+    <string name="ambilight_failed">Screen sync could not start</string>
+</resources>

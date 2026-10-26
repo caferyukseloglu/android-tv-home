@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme" parent="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+    <color name="bg">#0E0F12</color>
+</resources>

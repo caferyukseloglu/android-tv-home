@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Ana Ekran</string>
+    <string name="lights">Işıklar</string>
+    <string name="apps">Uygulamalar</string>
+    <string name="settings">Ayarlar</string>
+    <string name="on">Açık</string>
+    <string name="off">Kapalı</string>
+    <string name="unreachable">Anahtardan kapalı</string>
+    <string name="hue_connect">Hue\'yu bağla</string>
+    <string name="hue_connect_hint">TV\'nin arkasındaki ve odalardaki ışıklar</string>
+    <string name="hue_searching">Hue Bridge aranıyor…</string>
+    <string name="hue_press">Hue Bridge\'in üstündeki butona basın</string>
+    <string name="hue_not_found">Hue Bridge bulunamadı. Tekrar için OK.</string>
+    <string name="hue_offline">Hue Bridge\'e ulaşılamıyor. Tekrar için OK.</string>
+    <string name="hue_not_pressed">Butona basılmadı. Tekrar için OK.</string>
+    <string name="hidden">Gizli. Göstermek için OK\'e basılı tutun.</string>
+    <string name="hue_no_lights">Hue Bridge\'de henüz ışık yok</string>
+    <string name="on_percent">Açık · %%%1$d</string>
+    <string name="brightness">Parlaklık  %%%1$d</string>
+    <string name="ambilight">Ekran senkronu</string>
+    <string name="ambilight_start">Görüntüye göre renklendir</string>
+    <string name="ambilight_stop">Ekran senkronunu durdur</string>
+    <string name="ambilight_failed">Ekran senkronu başlatılamadı</string>
+</resources>
