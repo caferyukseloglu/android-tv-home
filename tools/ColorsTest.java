@@ -22,7 +22,14 @@ public final class ColorsTest {
         check((pal[4] & 255) > 200 && ((pal[4] >> 16) & 255) < 40, "right point is a bright blue: " + Integer.toHexString(pal[4]));
         int[] dark = Colors.palette(new int[20], 10, 2, 5);
         check(dark[2] != 0, "a black cover still gives a visible color, not off");
-        System.out.println("ColorsTest: 9 passed");
+        int pastel = Colors.saturate(0xFFB0B0, 2.0);
+        check(((pastel >> 8) & 255) < 0x70, "saturate makes a pastel red deeper: " + Integer.toHexString(pastel));
+        check(Colors.saturate(0x808080, 2.0) == 0x808080, "grey has no hue to boost");
+        check(Colors.saturate(0xFF0000, 5.0) == 0xFF0000, "an already pure color is unchanged");
+        check(near(Colors.luminance(new int[] {0xFFFFFF, 0}), 0.5, 1e-9), "luminance averages the frame");
+        check(java.util.Arrays.equals(Colors.rotate(new int[] {1, 2, 3}, 1), new int[] {2, 3, 1}), "rotate moves colors along");
+        check(java.util.Arrays.equals(Colors.rotate(new int[] {1, 2, 3}, 4), new int[] {2, 3, 1}), "rotate wraps around");
+        System.out.println("ColorsTest: 15 passed");
     }
 
     private static boolean near(double a, double b, double tolerance) {

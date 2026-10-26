@@ -70,6 +70,36 @@ final class Colors {
         return out;
     }
 
+    /** Pushes a color away from grey (factor 1 = unchanged); keeps hue and the brightest channel. */
+    static int saturate(int rgb, double factor) {
+        int r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
+        int max = Math.max(r, Math.max(g, b));
+        int min = Math.min(r, Math.min(g, b));
+        if (max == min) return rgb;
+        double s = Math.min(1.0, (max - min) / (double) max * factor);
+        double newMin = max * (1 - s);
+        double scale = (max - newMin) / (max - min); // stretch each channel between the new min and max
+        return channel(max - (max - r) * scale) << 16 | channel(max - (max - g) * scale) << 8 | channel(max - (max - b) * scale);
+    }
+
+    /** 0 = black frame, 1 = white frame. */
+    static double luminance(int[] argb) {
+        double sum = 0;
+        for (int c : argb) sum += (0.2126 * ((c >> 16) & 255) + 0.7152 * ((c >> 8) & 255) + 0.0722 * (c & 255)) / 255;
+        return argb.length == 0 ? 0 : sum / argb.length;
+    }
+
+    /** The colors moved `steps` places toward the start, wrapping: one step of the slow flow along a strip. */
+    static int[] rotate(int[] colors, int steps) {
+        int[] out = new int[colors.length];
+        for (int i = 0; i < colors.length; i++) out[i] = colors[(i + steps) % colors.length];
+        return out;
+    }
+
+    private static int channel(double v) {
+        return (int) Math.round(Math.max(0, Math.min(255, v)));
+    }
+
     private static double linear(double c) {
         return c > 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92;
     }

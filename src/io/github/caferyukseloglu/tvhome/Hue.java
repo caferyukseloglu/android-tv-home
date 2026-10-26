@@ -206,6 +206,29 @@ final class Hue {
         }, cb);
     }
 
+    /**
+     * Every light of the Hue entertainment area that holds this light (the TV area the Hue app sets
+     * up for sync), or just the light when it is in none. Blocking; call inside async().
+     */
+    List<String> entertainmentArea(String lightId) throws IOException, org.json.JSONException {
+        JSONObject groups = new JSONObject(http("GET", "/api/" + user() + "/groups", null));
+        for (Iterator<String> it = groups.keys(); it.hasNext(); ) {
+            JSONObject g = groups.getJSONObject(it.next());
+            if (!"Entertainment".equals(g.optString("type"))) continue;
+            JSONArray lights = g.getJSONArray("lights");
+            List<String> ids = new ArrayList<>();
+            for (int i = 0; i < lights.length(); i++) ids.add(lights.getString(i));
+            if (ids.contains(lightId)) {
+                ids.remove(lightId);
+                ids.add(0, lightId); // the strip leads: it shows the whole palette
+                return ids;
+            }
+        }
+        List<String> alone = new ArrayList<>();
+        alone.add(lightId);
+        return alone;
+    }
+
     /** The TV strip first (it is the light people reach for while watching), then in the bridge's order. */
     static List<Light> parseLights(JSONObject lights) throws org.json.JSONException {
         List<Light> out = new ArrayList<>();

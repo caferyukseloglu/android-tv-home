@@ -44,7 +44,7 @@ public final class LightsActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.addView(scroll, new FrameLayout.LayoutParams(Ui.dp(this, 380), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END));
         setContentView(root);
-        lights = new LightsRow(this, cards, new FilmMode(this), 316);
+        lights = new LightsRow(this, cards, FilmMode.get(this), 316);
     }
 
     @Override

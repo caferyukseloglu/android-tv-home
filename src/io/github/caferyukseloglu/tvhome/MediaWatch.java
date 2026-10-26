@@ -26,7 +26,7 @@ public final class MediaWatch extends NotificationListenerService {
 
     @Override
     public void onListenerConnected() {
-        film = new FilmMode(this);
+        film = FilmMode.get(this);
         sessions = getSystemService(MediaSessionManager.class);
         ComponentName me = new ComponentName(this, MediaWatch.class);
         sessions.addOnActiveSessionsChangedListener(changed, me);
@@ -64,7 +64,9 @@ public final class MediaWatch extends NotificationListenerService {
     private void check(MediaController c) {
         PlaybackState state = c.getPlaybackState();
         MediaMetadata m = c.getMetadata();
-        if (state == null || state.getState() != PlaybackState.STATE_PLAYING || m == null) return;
+        if (state == null || !film.isVideo(c.getPackageName())) return; // music, Bluetooth etc. do not steer the TV lights
+        film.playing(state.getState() == PlaybackState.STATE_PLAYING);
+        if (state.getState() != PlaybackState.STATE_PLAYING || m == null) return;
         String key = c.getPackageName() + "|" + m.getString(MediaMetadata.METADATA_KEY_TITLE);
         if (key.equals(FilmMode.shown)) return;
         FilmMode.shown = key;

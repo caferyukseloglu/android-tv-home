@@ -54,7 +54,7 @@ public final class MainActivity extends Activity {
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xFF17191E, 0xFF0B0C0F}));
         root.addView(content);
         setContentView(root);
-        film = new FilmMode(this);
+        film = FilmMode.get(this);
         lights = new LightsRow(this, lightRow, film, 168);
     }
 
