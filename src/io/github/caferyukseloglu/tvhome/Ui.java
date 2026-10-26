@@ -13,7 +13,26 @@ final class Ui {
     static final int TEXT_DIM = 0xFF8E9099;
     static final int CARD = 0xFF1E2026;
 
+    private static final float TILT = 7f; // degrees a card leans toward the way focus came in
+    private static int lastDx; // direction of the last arrow key: -1, 0 or 1
+    private static int lastDy;
+
     private Ui() {}
+
+    /** Called for every key on screens with cards, so a newly focused card knows where focus came from. */
+    static void noteKey(android.view.KeyEvent e) {
+        if (e.getAction() != android.view.KeyEvent.ACTION_DOWN) return;
+        switch (e.getKeyCode()) {
+            case android.view.KeyEvent.KEYCODE_DPAD_LEFT: lastDx = -1; lastDy = 0; break;
+            case android.view.KeyEvent.KEYCODE_DPAD_RIGHT: lastDx = 1; lastDy = 0; break;
+            case android.view.KeyEvent.KEYCODE_DPAD_UP: lastDx = 0; lastDy = -1; break;
+            case android.view.KeyEvent.KEYCODE_DPAD_DOWN: lastDx = 0; lastDy = 1; break;
+            default: break;
+        }
+    }
+
+    static final android.view.animation.Interpolator SPRING = new android.view.animation.OvershootInterpolator(1.6f);
+    static final android.view.animation.Interpolator SETTLE = new android.view.animation.DecelerateInterpolator(1.8f);
 
     static int dp(Context c, float v) {
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, c.getResources().getDisplayMetrics()));
@@ -35,7 +54,10 @@ final class Ui {
         return d;
     }
 
-    /** Focused cards grow, lift and get a white ring, like tvOS. */
+    /**
+     * tvOS-like focus: the card springs up a little past its size and settles, leans toward the
+     * direction focus came from and straightens, lifts its shadow and shows a thin white ring.
+     */
     static void focusable(View v, GradientDrawable bg, View.OnFocusChangeListener also) {
         focusable(v, bg, also, 1.08f);
     }
@@ -54,9 +76,19 @@ final class Ui {
         v.setFocusable(true);
         v.setBackground(bg);
         v.setClipToOutline(true);
+        v.setCameraDistance(dp(c, 1200)); // a deep camera keeps the lean subtle instead of a warp
         v.setOnFocusChangeListener((view, has) -> {
-            float scale = has ? zoom : 1f; // 1.08: a lift, not a jump
-            view.animate().scaleX(scale).scaleY(scale).translationZ(has ? dp(c, 16) : 0).setDuration(180).start();
+            if (has && zoom > 1f) {
+                view.setRotationY(lastDx * TILT);
+                view.setRotationX(-lastDy * TILT);
+            }
+            view.animate()
+                    .scaleX(has ? zoom : 1f).scaleY(has ? zoom : 1f)
+                    .rotationX(0).rotationY(0)
+                    .translationZ(has ? dp(c, 18) : 0)
+                    .setInterpolator(has ? SPRING : SETTLE)
+                    .setDuration(has ? 420 : 220)
+                    .start();
             ring.setStroke(has ? dp(c, 2) : 0, 0xCCFFFFFF);
             if (also != null) also.onFocusChange(view, has);
         });

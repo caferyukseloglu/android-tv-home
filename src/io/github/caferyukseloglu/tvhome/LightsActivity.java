@@ -48,6 +48,12 @@ public final class LightsActivity extends Activity {
     }
 
     @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        Ui.noteKey(event);
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         lights.resume();

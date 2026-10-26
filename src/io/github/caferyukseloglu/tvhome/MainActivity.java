@@ -26,6 +26,7 @@ public final class MainActivity extends Activity {
     private AppGrid grid;
     private FilmMode film;
     private NowPlaying nowPlaying;
+    private TextView weather;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -84,6 +85,7 @@ public final class MainActivity extends Activity {
         grid.show(null);
         lights.resume();
         nowPlaying.resume();
+        new WeatherClient(this).load(w -> weather.setText(w == null ? "" : WeatherClient.describe(this, w)));
     }
 
     @Override
@@ -95,6 +97,7 @@ public final class MainActivity extends Activity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        Ui.noteKey(event);
         return grid.onKey(event) || super.dispatchKeyEvent(event);
     }
 
@@ -106,6 +109,13 @@ public final class MainActivity extends Activity {
     /** Date on the left, time and Settings on the right: small and quiet, the content leads. */
     private View header() {
         TextClock date = clock("EEEE, d MMMM", 17, Ui.TEXT_DIM);
+        weather = Ui.text(this, 17, Ui.TEXT_DIM, false);
+        LinearLayout left = new LinearLayout(this);
+        left.setGravity(Gravity.CENTER_VERTICAL);
+        left.addView(date);
+        LinearLayout.LayoutParams wl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        wl.leftMargin = Ui.dp(this, 22);
+        left.addView(weather, wl);
         TextClock time = clock(null, 22, Ui.TEXT);
 
         TextView settings = Ui.text(this, 15, Ui.TEXT, false);
@@ -120,7 +130,7 @@ public final class MainActivity extends Activity {
         header.setClipChildren(false);
         header.setClipToPadding(false); // the focused Settings pill grows into the margin
         header.setPadding(Ui.dp(this, EDGE), 0, Ui.dp(this, EDGE), 0);
-        header.addView(date, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        header.addView(left, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         header.addView(time);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         p.leftMargin = Ui.dp(this, 20);

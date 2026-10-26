@@ -5,6 +5,7 @@ import android.app.Dialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -33,6 +34,7 @@ final class AppGrid {
     private final LinearLayout grid;
     private final List<View> cells = new ArrayList<>(); // one per app, in grid order; the card is child 0
     private View moving; // the cell being moved, null when not moving
+    private boolean revealed;
 
     AppGrid(Activity activity, Apps apps, FilmMode film) {
         this.activity = activity;
@@ -59,6 +61,19 @@ final class AppGrid {
         layout();
         if (focus == null && !cells.isEmpty()) focus = card(cells.get(0));
         if (focus != null) focus.requestFocus();
+        if (!revealed) reveal();
+    }
+
+    /** First time Home appears: the cards rise into place one after another. */
+    private void reveal() {
+        revealed = true;
+        for (int i = 0; i < cells.size(); i++) {
+            View cell = cells.get(i);
+            cell.setAlpha(0f);
+            cell.setTranslationY(Ui.dp(activity, 24));
+            cell.animate().alpha(1f).translationY(0).setStartDelay(60 + i * 22L).setDuration(460)
+                    .setInterpolator(Ui.SETTLE).start();
+        }
     }
 
     /** Rows of five; called again after a move, the cells keep their views and focus. */
@@ -94,6 +109,8 @@ final class AppGrid {
         card.setAlpha(app.hidden ? 0.35f : 1f);
         card.setContentDescription(app.label);
         card.setTag(app);
+        View sheen = sheen();
+        card.addView(sheen, new FrameLayout.LayoutParams(Ui.dp(activity, 90), ViewGroup.LayoutParams.MATCH_PARENT));
 
         TextView name = Ui.text(activity, 14, Ui.TEXT, false);
         name.setText(app.hidden ? activity.getString(R.string.hidden) + " · " + app.label : app.label);
@@ -101,7 +118,14 @@ final class AppGrid {
         name.setAlpha(0f);
         name.setPadding(0, Ui.dp(activity, 12), 0, 0);
 
-        Ui.focusable(card, Ui.rounded(activity, Ui.CARD), (v, has) -> name.animate().alpha(has ? 1f : 0f).setDuration(160).start());
+        Ui.focusable(card, Ui.rounded(activity, Ui.CARD), (v, has) -> {
+            name.animate().alpha(has ? 1f : 0f).setDuration(200).start();
+            if (has) { // one glint across the banner, like light catching glass
+                sheen.setTranslationX(-Ui.dp(activity, 100));
+                sheen.animate().translationX(Ui.dp(activity, CARD_W + 20)).setStartDelay(90).setDuration(700)
+                        .setInterpolator(Ui.SETTLE).start();
+            }
+        });
         card.setOnClickListener(v -> {
             film.start(app.pkg);
             apps.launch(app);
@@ -117,6 +141,18 @@ final class AppGrid {
         cell.addView(card, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(activity, CARD_H)));
         cell.addView(name, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(activity, 34)));
         return cell;
+    }
+
+    /** A soft diagonal band of light, parked off the card until focus sends it across. */
+    private View sheen() {
+        GradientDrawable band = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[] {0x00FFFFFF, 0x38FFFFFF, 0x00FFFFFF});
+        View v = new View(activity);
+        v.setBackground(band);
+        v.setRotation(14f);
+        v.setScaleY(1.6f);
+        v.setTranslationX(-Ui.dp(activity, 100));
+        return v;
     }
 
     private static View card(View cell) {

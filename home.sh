@@ -33,10 +33,11 @@ build() {
 run_tests() {
     mkdir -p build/test
     # Only the pure-Java classes: they run on the Mac's JVM without Android.
-    javac -d build/test src/io/github/caferyukseloglu/tvhome/{AppOrder,Colors,Palettes}.java tools/*Test.java
+    javac -d build/test src/io/github/caferyukseloglu/tvhome/{AppOrder,Colors,Palettes,Weather}.java tools/*Test.java
     java -cp build/test "$PKG.AppOrderTest"
     java -cp build/test "$PKG.ColorsTest"
     java -cp build/test "$PKG.PalettesTest"
+    java -cp build/test "$PKG.WeatherTest"
 }
 
 install() {
@@ -51,6 +52,9 @@ install() {
 # Make this the home screen. If the TV still opens its own launcher, switch that launcher off
 # (pm disable-user keeps it installed with its data) and remember it for `restore`.
 home() {
+    # The clock and weather screensaver; the previous one is still listed in Settings -> Screensaver.
+    adb shell settings put secure screensaver_components "$PKG/.Ambient"
+    adb shell settings put secure screensaver_enabled 1
     adb shell cmd package set-home-activity "$PKG/.MainActivity"
     adb shell input keyevent KEYCODE_HOME
     sleep 2
