@@ -13,7 +13,7 @@
     <string name="hue_not_found">No Hue Bridge found. OK to retry.</string>
     <string name="hue_offline">Hue Bridge not reachable. OK to retry.</string>
     <string name="hue_not_pressed">The button was not pressed. OK to try again.</string>
-    <string name="hidden">Hidden. Hold OK to show again.</string>
+    <string name="hidden">Hidden</string>
     <string name="hue_no_lights">No lights on the Hue Bridge yet</string>
     <string name="on_percent">On · %1$d%%</string>
     <string name="brightness">%1$d%%</string>
@@ -32,4 +32,8 @@
     <string name="effect_underwater">Underwater</string>
     <string name="effect_cosmos">Cosmos</string>
     <string name="effect_enchant">Enchant</string>
+    <string name="move">Move</string>
+    <string name="hide">Hide</string>
+    <string name="show">Show</string>
+    <string name="moving_hint">Left and Right move it, OK puts it down</string>
 </resources>

@@ -1,28 +1,24 @@
 package io.github.caferyukseloglu.tvhome;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-/** Pure ordering, so it can be tested without Android: recently used first, hidden last. */
+/** Pure ordering, so it can be tested without Android: the user's arrangement, new apps after it, hidden last. */
 final class AppOrder {
     private AppOrder() {}
 
-    /** byLabel is already sorted by name; that order is kept for apps never opened (stable sort). */
-    static List<String> order(List<String> byLabel, Map<String, Long> lastUsed, Set<String> hidden) {
-        List<String> visible = new ArrayList<>();
-        List<String> rest = new ArrayList<>();
-        for (String pkg : byLabel) {
-            (hidden.contains(pkg) ? rest : visible).add(pkg);
+    /** byLabel: installed apps sorted by name. saved: the order the user arranged (may name uninstalled apps). */
+    static List<String> order(List<String> byLabel, List<String> saved, Set<String> hidden) {
+        Set<String> out = new LinkedHashSet<>();
+        for (String pkg : saved) {
+            if (byLabel.contains(pkg) && !hidden.contains(pkg)) out.add(pkg);
         }
-        visible.sort((a, b) -> Long.compare(used(lastUsed, b), used(lastUsed, a)));
-        visible.addAll(rest);
-        return visible;
-    }
-
-    private static long used(Map<String, Long> lastUsed, String pkg) {
-        Long t = lastUsed.get(pkg);
-        return t == null ? 0 : t;
+        for (String pkg : byLabel) {
+            if (!hidden.contains(pkg)) out.add(pkg);
+        }
+        out.addAll(byLabel); // whatever is left is hidden, kept in name order
+        return new ArrayList<>(out);
     }
 }

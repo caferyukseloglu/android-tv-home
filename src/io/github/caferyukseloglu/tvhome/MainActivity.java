@@ -6,6 +6,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -15,6 +16,9 @@ import android.widget.LinearLayout;
 import android.widget.TextClock;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** The home screen: clock, Hue lights, apps. Nothing else. */
 public final class MainActivity extends Activity {
     private static final int EDGE = 60; // dp from the screen edge to text and the first card
@@ -23,6 +27,7 @@ public final class MainActivity extends Activity {
     private LinearLayout appRow;
     private TextView appLabel;
     private FilmMode film;
+    private View moving; // the app card being moved with Left/Right, null when not moving
 
     @Override
     protected void onCreate(Bundle state) {
@@ -67,6 +72,88 @@ public final class MainActivity extends Activity {
         super.onPause();
     }
 
+    /** Hold OK on an app: move it, or hide/show it. */
+    private void appMenu(Apps.App app) {
+        android.app.Dialog menu = new android.app.Dialog(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setClipChildren(false);
+        int pad = Ui.dp(this, 20);
+        list.setPadding(pad, pad, pad, pad);
+        list.setBackground(Ui.rounded(this, 0xFF17191E));
+        TextView title = Ui.text(this, 20, Ui.TEXT, true);
+        title.setText(app.label);
+        title.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 8));
+        list.addView(title);
+        if (!app.hidden) list.addView(menuItem(R.string.move, () -> {
+            menu.dismiss();
+            startMove(app.pkg);
+        }));
+        list.addView(menuItem(app.hidden ? R.string.show : R.string.hide, () -> {
+            menu.dismiss();
+            apps.toggleHidden(app.pkg);
+            showApps(app.pkg);
+        }));
+        menu.setContentView(list, new ViewGroup.LayoutParams(Ui.dp(this, 320), ViewGroup.LayoutParams.WRAP_CONTENT));
+        menu.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
+        menu.show();
+    }
+
+    private View menuItem(int text, Runnable action) {
+        TextView item = Ui.text(this, 17, Ui.TEXT, false);
+        item.setText(text);
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 16), 0);
+        Ui.focusable(item, Ui.rounded(this, Ui.CARD), null, 1f);
+        item.setOnClickListener(v -> action.run());
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 48));
+        p.topMargin = Ui.dp(this, 8);
+        item.setLayoutParams(p);
+        return item;
+    }
+
+    /** The card lifts; Left/Right carry it along the row, OK or Back puts it down and saves the order. */
+    private void startMove(String pkg) {
+        for (int i = 0; i < appRow.getChildCount(); i++) {
+            View card = appRow.getChildAt(i);
+            if (((Apps.App) card.getTag()).pkg.equals(pkg)) moving = card;
+        }
+        if (moving == null) return;
+        moving.requestFocus();
+        moving.animate().translationY(-Ui.dp(this, 14)).setDuration(140).start();
+        appLabel.setText(R.string.moving_hint);
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (moving == null) return super.dispatchKeyEvent(event);
+        int code = event.getKeyCode();
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                int from = appRow.indexOfChild(moving);
+                int to = from + (code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+                View neighbour = appRow.getChildAt(to);
+                if (neighbour != null && !((Apps.App) neighbour.getTag()).hidden) { // hidden apps stay at the end
+                    appRow.removeViewAt(from);
+                    appRow.addView(moving, to);
+                    moving.requestFocus();
+                }
+            } else if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_BACK) {
+                endMove();
+            }
+        }
+        return true; // while moving, no key reaches the rest of the screen
+    }
+
+    private void endMove() {
+        moving.animate().translationY(0).setDuration(140).start();
+        appLabel.setText(((Apps.App) moving.getTag()).label);
+        moving = null;
+        List<String> order = new ArrayList<>();
+        for (int i = 0; i < appRow.getChildCount(); i++) order.add(((Apps.App) appRow.getChildAt(i).getTag()).pkg);
+        apps.saveOrder(order);
+    }
+
     @Override
     public void onBackPressed() {
         // Home is the bottom of the stack: Back has nowhere to go.
@@ -104,9 +191,9 @@ public final class MainActivity extends Activity {
             film.start(app.pkg);
             apps.launch(app);
         });
+        card.setTag(app);
         card.setOnLongClickListener(v -> {
-            apps.toggleHidden(app.pkg);
-            showApps(app.pkg);
+            appMenu(app);
             return true;
         });
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(Ui.dp(this, 160), Ui.dp(this, 90));

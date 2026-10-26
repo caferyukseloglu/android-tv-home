@@ -13,7 +13,7 @@
     <string name="hue_not_found">Hue Bridge bulunamadı. Tekrar için OK.</string>
     <string name="hue_offline">Hue Bridge\'e ulaşılamıyor. Tekrar için OK.</string>
     <string name="hue_not_pressed">Butona basılmadı. Tekrar için OK.</string>
-    <string name="hidden">Gizli. Göstermek için OK\'e basılı tutun.</string>
+    <string name="hidden">Gizli</string>
     <string name="hue_no_lights">Hue Bridge\'de henüz ışık yok</string>
     <string name="on_percent">Açık · %%%1$d</string>
     <string name="brightness">%%%1$d</string>
@@ -32,4 +32,8 @@
     <string name="effect_underwater">Su altı</string>
     <string name="effect_cosmos">Kozmos</string>
     <string name="effect_enchant">Büyü</string>
+    <string name="move">Taşı</string>
+    <string name="hide">Gizle</string>
+    <string name="show">Göster</string>
+    <string name="moving_hint">Sol ve Sağ ile taşı, bırakmak için OK</string>
 </resources>

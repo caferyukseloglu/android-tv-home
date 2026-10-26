@@ -8,6 +8,7 @@ import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** The TV's launchable apps, with last-used times and hidden apps kept on the TV. */
+/** The TV's launchable apps, in the order the user arranged, with hidden apps kept on the TV. */
 final class Apps {
     static final class App {
         final String pkg;
@@ -57,13 +58,9 @@ final class Apps {
                 byPkg.putIfAbsent(r.activityInfo.packageName, r);
             }
         }
-        Map<String, Long> used = new HashMap<>();
-        for (String pkg : byPkg.keySet()) {
-            used.put(pkg, prefs.getLong("used:" + pkg, 0));
-        }
         Set<String> hidden = hidden();
         List<App> apps = new ArrayList<>();
-        for (String pkg : AppOrder.order(new ArrayList<>(byPkg.keySet()), used, hidden)) {
+        for (String pkg : AppOrder.order(new ArrayList<>(byPkg.keySet()), savedOrder(), hidden)) {
             App art = artwork.get(pkg);
             if (art == null) {
                 ResolveInfo r = byPkg.get(pkg);
@@ -80,7 +77,6 @@ final class Apps {
     void launch(App app) {
         Intent intent = pm.getLeanbackLaunchIntentForPackage(app.pkg);
         if (intent == null) return; // uninstalled since the row was drawn
-        prefs.edit().putLong("used:" + app.pkg, System.currentTimeMillis()).apply();
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 
@@ -88,6 +84,16 @@ final class Apps {
         Set<String> next = new HashSet<>(hidden());
         if (!next.remove(pkg)) next.add(pkg);
         prefs.edit().putStringSet("hidden", next).apply();
+    }
+
+    /** The row as the user arranged it, left to right. */
+    void saveOrder(List<String> pkgs) {
+        prefs.edit().putString("order", String.join(",", pkgs)).apply();
+    }
+
+    private List<String> savedOrder() {
+        String order = prefs.getString("order", "");
+        return order.isEmpty() ? Collections.<String>emptyList() : Arrays.asList(order.split(","));
     }
 
     private Set<String> hidden() {
