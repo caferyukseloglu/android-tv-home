@@ -25,6 +25,7 @@ public final class MainActivity extends Activity {
     private LightsRow lights;
     private AppGrid grid;
     private FilmMode film;
+    private NowPlaying nowPlaying;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -42,6 +43,11 @@ public final class MainActivity extends Activity {
         page.setClipToPadding(false);
         page.setPadding(0, Ui.dp(this, 28), 0, Ui.dp(this, 40));
         page.addView(header(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout playing = new LinearLayout(this);
+        playing.setClipChildren(false);
+        playing.setClipToPadding(false);
+        playing.setPadding(Ui.dp(this, EDGE), Ui.dp(this, 14), Ui.dp(this, EDGE), 0);
+        page.addView(playing);
         page.addView(scroller(shelf));
         View apps = grid.view();
         apps.setPadding(Ui.dp(this, EDGE), Ui.dp(this, 14), Ui.dp(this, EDGE), 0);
@@ -58,6 +64,7 @@ public final class MainActivity extends Activity {
         root.addView(scroll);
         setContentView(root);
         lights = new LightsRow(this, shelf, film, 168);
+        nowPlaying = new NowPlaying(this, playing);
     }
 
     /** A deep graphite room with a soft light from above, like a lit wall behind the TV. */
@@ -76,11 +83,13 @@ public final class MainActivity extends Activity {
         film.end(); // back on Home: the TV lights return to how they were
         grid.show(null);
         lights.resume();
+        nowPlaying.resume();
     }
 
     @Override
     protected void onPause() {
         lights.pause();
+        nowPlaying.pause();
         super.onPause();
     }
 

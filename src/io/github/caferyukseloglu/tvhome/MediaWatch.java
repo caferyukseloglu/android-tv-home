@@ -20,6 +20,7 @@ import java.util.Map;
  */
 public final class MediaWatch extends NotificationListenerService {
     private final Map<MediaController, MediaController.Callback> watched = new HashMap<>();
+    private final android.os.Handler retry = new android.os.Handler(android.os.Looper.getMainLooper());
     private final MediaSessionManager.OnActiveSessionsChangedListener changed = this::watch;
     private MediaSessionManager sessions;
     private FilmMode film;
@@ -35,6 +36,7 @@ public final class MediaWatch extends NotificationListenerService {
 
     @Override
     public void onListenerDisconnected() {
+        retry.removeCallbacksAndMessages(null);
         if (sessions != null) sessions.removeOnActiveSessionsChangedListener(changed);
         watch(null);
     }
@@ -67,13 +69,21 @@ public final class MediaWatch extends NotificationListenerService {
         if (state == null || !film.isVideo(c.getPackageName())) return; // music, Bluetooth etc. do not steer the TV lights
         film.playing(state.getState() == PlaybackState.STATE_PLAYING);
         if (state.getState() != PlaybackState.STATE_PLAYING || m == null) return;
-        String key = c.getPackageName() + "|" + m.getString(MediaMetadata.METADATA_KEY_TITLE);
-        if (key.equals(FilmMode.shown)) return;
-        FilmMode.shown = key;
         Bitmap art = firstBitmap(m, MediaMetadata.METADATA_KEY_ART, MediaMetadata.METADATA_KEY_ALBUM_ART,
                 MediaMetadata.METADATA_KEY_DISPLAY_ICON);
         String uri = firstString(m, MediaMetadata.METADATA_KEY_ART_URI, MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
                 MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI);
+        // Apps often send the title first and the cover a moment later: the cover is part of the key,
+        // so its arrival counts as new and is not skipped as "already shown".
+        String key = c.getPackageName() + "|" + m.getString(MediaMetadata.METADATA_KEY_TITLE) + "|" + (art != null || uri != null);
+        if (key.equals(FilmMode.shown)) return;
+        FilmMode.shown = key;
+        android.util.Log.i("MediaWatch", c.getPackageName() + " playing, cover " + (art != null ? "bitmap" : uri));
+        if (art == null && uri == null) {
+            // Some apps send the cover slot empty and fill it in later without telling: look again.
+            retry.postDelayed(() -> check(c), 3000);
+            retry.postDelayed(() -> check(c), 8000);
+        }
         film.content(c.getPackageName(), art, uri);
     }
 
