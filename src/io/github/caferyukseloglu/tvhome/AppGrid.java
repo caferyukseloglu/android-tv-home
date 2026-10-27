@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Intent;
 import android.net.Uri;
+import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
@@ -119,6 +120,10 @@ final class AppGrid {
 
         Ui.focusable(card, Ui.rounded(activity, Ui.CARD), (v, has) -> {
             name.animate().alpha(has ? 1f : 0f).setDuration(200).start();
+            if (has) { // scroll so the name under the card and a margin show too, not just the card
+                View cell = (View) v.getParent();
+                cell.requestRectangleOnScreen(new Rect(0, 0, cell.getWidth(), cell.getHeight() + Ui.dp(activity, 28)), false);
+            }
             if (has) { // one glint across the banner, like light catching glass
                 sheen.setTranslationX(-Ui.dp(activity, 100));
                 sheen.animate().translationX(Ui.dp(activity, CARD_W + 20)).setStartDelay(90).setDuration(700)

@@ -119,7 +119,9 @@ final class NowPlaying {
         TextView title = Ui.text(activity, 16, Ui.TEXT, true);
         title.setText(text(m, MediaMetadata.METADATA_KEY_TITLE, activity.getString(R.string.now_playing)));
         TextView sub = Ui.text(activity, 13, Ui.TEXT_DIM, false);
-        sub.setText(text(m, MediaMetadata.METADATA_KEY_ARTIST, appName(controller.getPackageName())));
+        String artist = text(m, MediaMetadata.METADATA_KEY_ARTIST, null);
+        // Some apps (Spotify on TV) repeat the title as the artist: then the app's name says more.
+        sub.setText(artist == null || artist.equals(title.getText().toString()) ? appName(controller.getPackageName()) : artist);
         texts.addView(title);
         texts.addView(sub);
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);

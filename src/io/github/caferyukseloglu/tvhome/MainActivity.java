@@ -59,6 +59,11 @@ public final class MainActivity extends Activity {
         scroll.setClipChildren(false);
         scroll.setFillViewport(true);
         scroll.addView(page);
+        View appsView = apps;
+        // Above the grid everything fits on one screen: focus there shows the page from the very top.
+        scroll.getViewTreeObserver().addOnGlobalFocusChangeListener((was, now) -> {
+            if (now != null && !inside(now, appsView)) scroll.smoothScrollTo(0, 0);
+        });
 
         FrameLayout root = new FrameLayout(this);
         root.setBackground(backdrop());
@@ -66,6 +71,13 @@ public final class MainActivity extends Activity {
         setContentView(root);
         lights = new LightsRow(this, shelf, film, 168);
         nowPlaying = new NowPlaying(this, playing);
+    }
+
+    private static boolean inside(View v, View parent) {
+        for (android.view.ViewParent p = v.getParent(); p instanceof View; p = p.getParent()) {
+            if (p == parent) return true;
+        }
+        return false;
     }
 
     /** A deep graphite room with a soft light from above, like a lit wall behind the TV. */

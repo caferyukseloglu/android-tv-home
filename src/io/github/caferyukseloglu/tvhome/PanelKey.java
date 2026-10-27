@@ -32,6 +32,11 @@ public final class PanelKey extends AccessibilityService {
     }
 
     @Override
+    protected void onServiceConnected() {
+        android.util.Log.i("PanelKey", "lights key is keycode " + KEY + " (" + KeyEvent.keyCodeToString(KEY) + ")");
+    }
+
+    @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {}
 
     @Override

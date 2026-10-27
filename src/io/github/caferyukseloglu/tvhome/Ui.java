@@ -76,6 +76,9 @@ final class Ui {
         v.setFocusable(true);
         v.setBackground(bg);
         v.setClipToOutline(true);
+        // The Menu key does what holding OK does (Android TV's convention), for remotes that have one.
+        v.setOnKeyListener((view, code, e) -> code == android.view.KeyEvent.KEYCODE_MENU
+                && e.getAction() == android.view.KeyEvent.ACTION_UP && view.isLongClickable() && view.performLongClick());
         v.setCameraDistance(dp(c, 1200)); // a deep camera keeps the lean subtle instead of a warp
         v.setOnFocusChangeListener((view, has) -> {
             if (has && zoom > 1f) {

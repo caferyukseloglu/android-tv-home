@@ -44,7 +44,8 @@ final class LightPanel extends Dialog {
         {"cosmos", R.string.effect_cosmos}, {"enchant", R.string.effect_enchant},
     };
     private static List<Palettes.Palette> palettes; // res/raw/hue_palettes.txt, read once
-    private static final int STEP = 25; // brightness step on the 1-254 scale, about 10%
+    private static final int STEP = 25;
+    private static final int PAD = 28; // dp, the panel's side padding // brightness step on the 1-254 scale, about 10%
 
     private final Context context;
     private final Hue hue;
@@ -71,7 +72,7 @@ final class LightPanel extends Dialog {
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setClipChildren(false);
         panel.setClipToPadding(false);
-        int pad = Ui.dp(context, 28);
+        int pad = Ui.dp(context, PAD);
         panel.setPadding(pad, Ui.dp(context, 24), pad, pad);
         panel.setBackground(Ui.rounded(context, 0xFF17191E));
         TextView title = Ui.text(context, 22, Ui.TEXT, true);
@@ -102,10 +103,16 @@ final class LightPanel extends Dialog {
             panel.addView(heading(R.string.effect_title));
             panel.addView(chips(effects, null, i -> v2(v2 -> v2.effect(light.id, (String) EFFECTS[i][0]))));
         }
-        // Five sections are taller than a 540 dp screen: the panel scrolls with focus.
-        android.widget.ScrollView scroll = new android.widget.ScrollView(context);
+        // Five sections are taller than a 540 dp screen: the panel scrolls with focus, and never grows
+        // past the screen minus a margin, so it floats instead of touching the top and bottom edges.
+        android.widget.ScrollView scroll = new android.widget.ScrollView(context) {
+            @Override protected void onMeasure(int widthSpec, int heightSpec) {
+                int max = getResources().getDisplayMetrics().heightPixels - Ui.dp(context, 64);
+                super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(max, MeasureSpec.AT_MOST));
+            }
+        };
         scroll.setVerticalScrollBarEnabled(false);
-        scroll.setClipChildren(false);
+        scroll.setFocusable(false); // focus starts on the first control, not on the scrolling frame
         scroll.addView(panel);
         setContentView(scroll, new ViewGroup.LayoutParams(Ui.dp(context, 640), ViewGroup.LayoutParams.WRAP_CONTENT));
         getWindow().setBackgroundDrawable(new ColorDrawable(0));
@@ -179,8 +186,7 @@ final class LightPanel extends Dialog {
     }
 
     private View swatches() {
-        LinearLayout row = new LinearLayout(context);
-        row.setClipChildren(false);
+        LinearLayout row = entryRow(context);
         int size = Ui.dp(context, 40);
         for (int[] s : SWATCHES) {
             boolean white = s[1] != 0;
@@ -246,11 +252,10 @@ final class LightPanel extends Dialog {
 
     /** A sideways row of chips; looks (optional) paints each chip with its palette, left to right. */
     private View chips(List<CharSequence> labels, List<int[]> looks, java.util.function.IntConsumer onPick) {
-        LinearLayout row = new LinearLayout(context);
-        row.setClipChildren(false);
+        LinearLayout row = entryRow(context);
         row.setClipToPadding(false);
         int v = Ui.dp(context, 6);
-        row.setPadding(Ui.dp(context, 4), v, Ui.dp(context, 4), v);
+        row.setPadding(Ui.dp(context, PAD), v, Ui.dp(context, PAD), v);
         for (int i = 0; i < labels.size(); i++) {
             int index = i;
             TextView chip = Ui.text(context, 15, Ui.TEXT, false);
@@ -273,9 +278,30 @@ final class LightPanel extends Dialog {
         }
         HorizontalScrollView scroller = new HorizontalScrollView(context);
         scroller.setHorizontalScrollBarEnabled(false);
-        scroller.setClipToPadding(false);
+        scroller.setHorizontalFadingEdgeEnabled(true); // the row fades out at the panel's sides instead of being cut
+        scroller.setFadingEdgeLength(Ui.dp(context, 36));
         scroller.addView(row);
+        // Edge to edge: the row runs under the panel's side padding and fades out right at its edges.
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.leftMargin = -Ui.dp(context, PAD);
+        lp.rightMargin = -Ui.dp(context, PAD);
+        scroller.setLayoutParams(lp);
         return scroller;
+    }
+
+    /**
+     * A row that is entered at its first item, like a leanback row: from outside only the first child
+     * is offered to focus search, inside it the arrows move normally.
+     */
+    static LinearLayout entryRow(Context context) {
+        LinearLayout row = new LinearLayout(context) {
+            @Override public void addFocusables(java.util.ArrayList<View> views, int direction, int mode) {
+                if (hasFocus() || getChildCount() == 0) super.addFocusables(views, direction, mode);
+                else getChildAt(0).addFocusables(views, direction, mode);
+            }
+        };
+        row.setClipChildren(false);
+        return row;
     }
 
     private void send(JSONObject state) {

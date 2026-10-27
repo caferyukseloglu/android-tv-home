@@ -13,7 +13,7 @@ No ads, no sponsored rows, no account. Plain Java, no libraries, about 70 KB, bu
 - **Home, the tvOS way.** A quiet header (date, weather, time), your apps as a five-column grid with the
   name under the focused card only. Focus springs up and settles, leans toward the way you moved and sends a
   glint across the banner; the cards rise into place when Home first appears.
-- **Your order.** Hold OK on an app for **Move**, **Hide** or **Uninstall** (apps you installed). Move
+- **Your order.** Hold OK (or press Menu) on an app for **Move**, **Hide** or **Uninstall** (apps you installed). Move
   carries the card through the grid with the arrows; new apps join at the end.
 - **Now Playing.** While anything plays (Spotify, YouTube, Stremio...), a card at the top shows the cover and
   title. OK pauses or plays, Left and Right skip. A forgotten video in the background is one press away.
@@ -27,7 +27,8 @@ No ads, no sponsored rows, no account. Plain Java, no libraries, about 70 KB, bu
   alone, and so are the room's other lamps. Paused or standby: the drift stops. Back on Home the strip,
   including its gradient or effect, returns to how it was.
 - **The lights from anywhere.** One remote key (on TCL remotes the 123 key) slides a lights panel in from the
-  right, over whatever is playing.
+  right, over whatever is playing. Android turns this key off if the app is force-stopped in Settings; run
+  `./home.sh panel-key` again to bring it back.
 - **Screensaver.** A large thin clock, the date and the weather over a slowly drifting glow; the text moves
   every minute so nothing burns in.
 - Finds the Hue Bridge on its own (mDNS); pairing is one press of the bridge's button.
