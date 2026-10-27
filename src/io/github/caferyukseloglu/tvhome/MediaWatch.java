@@ -20,7 +20,9 @@ import java.util.Map;
  */
 public final class MediaWatch extends NotificationListenerService {
     private final Map<MediaController, MediaController.Callback> watched = new HashMap<>();
+    private static final long SETTLE_MS = 3000;
     private final android.os.Handler retry = new android.os.Handler(android.os.Looper.getMainLooper());
+    private String pending; // a title waiting out SETTLE_MS before it may color the strip
     private final MediaSessionManager.OnActiveSessionsChangedListener changed = this::watch;
     private MediaSessionManager sessions;
     private FilmMode film;
@@ -76,15 +78,29 @@ public final class MediaWatch extends NotificationListenerService {
         // Apps often send the title first and the cover a moment later: the cover is part of the key,
         // so its arrival counts as new and is not skipped as "already shown".
         String key = c.getPackageName() + "|" + m.getString(MediaMetadata.METADATA_KEY_TITLE) + "|" + (art != null || uri != null);
-        if (key.equals(FilmMode.shown)) return;
-        FilmMode.shown = key;
+        if (key.equals(FilmMode.shown) || key.equals(pending)) return;
         android.util.Log.i("MediaWatch", c.getPackageName() + " playing, cover " + (art != null ? "bitmap" : uri));
         if (art == null && uri == null) {
-            // Some apps send the cover slot empty and fill it in later without telling: look again.
+            // No cover: the strip keeps the owner's color. Some apps fill the cover in later without telling.
             retry.postDelayed(() -> check(c), 3000);
             retry.postDelayed(() -> check(c), 8000);
+            return;
         }
-        film.content(c.getPackageName(), art, uri);
+        // Browsing previews (YouTube plays one under the focused tile) come and go in seconds:
+        // only a video still playing the same title after SETTLE_MS steers the lights.
+        pending = key;
+        retry.postDelayed(() -> {
+            if (!key.equals(pending)) return;
+            pending = null;
+            PlaybackState now = c.getPlaybackState();
+            MediaMetadata again = c.getMetadata();
+            if (now == null || now.getState() != PlaybackState.STATE_PLAYING || again == null
+                    || !java.util.Objects.equals(m.getString(MediaMetadata.METADATA_KEY_TITLE), again.getString(MediaMetadata.METADATA_KEY_TITLE))) {
+                return;
+            }
+            FilmMode.shown = key;
+            film.content(c.getPackageName(), art, uri);
+        }, SETTLE_MS);
     }
 
     /** The first cover picture a session offers; Now Playing uses the same choice. */

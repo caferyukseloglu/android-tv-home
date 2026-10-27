@@ -32,7 +32,7 @@ public final class MainActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         film = FilmMode.get(this);
-        grid = new AppGrid(this, new Apps(this), film);
+        grid = new AppGrid(this, new Apps(this));
         LinearLayout shelf = new LinearLayout(this);
         shelf.setClipChildren(false);
         shelf.setClipToPadding(false); // the padding is where the focus zoom grows into

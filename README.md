@@ -21,10 +21,11 @@ No ads, no sponsored rows, no account. Plain Java, no libraries, about 70 KB, bu
   wall switch say so. OK switches a lamp; hold OK for brightness, colors, the 103 palettes of the Hue app's
   scenes, your own Hue scenes and the bridge's effects (candle, fireplace, opal...). Changes from the Hue app or
   a wall switch show up at once (the bridge's event stream).
-- **Film mode.** Switch it on for the strip behind the TV. When a video app opens, every light of the TV's Hue
-  entertainment area goes to 6500 K white, then takes the colors of what is playing (its cover art), made more
-  vivid, drifting slowly along a gradient strip and across the lamps with soft fades. Paused or standby: the
-  drift stops. Back on Home: every light, including the strip's gradient or effect, returns to how it was.
+- **Film mode.** Switch it on for the strip behind the TV. Opening an app changes nothing. Once a video has
+  played for a few seconds, the strip takes the colors of what is playing (its cover art), made more vivid,
+  drifting slowly along it with soft fades. Browsing previews and videos without a cover leave your color
+  alone, and so are the room's other lamps. Paused or standby: the drift stops. Back on Home the strip,
+  including its gradient or effect, returns to how it was.
 - **The lights from anywhere.** One remote key (on TCL remotes the 123 key) slides a lights panel in from the
   right, over whatever is playing.
 - **Screensaver.** A large thin clock, the date and the weather over a slowly drifting glow; the text moves
@@ -45,7 +46,7 @@ Nothing goes to us; there is no server of ours. The app talks to:
 
 | Where | What | When |
 | --- | --- | --- |
-| Your Hue Bridge (your network) | Light commands and the bridge's event stream | While Home or the lights panel is open; during film mode |
+| Your Hue Bridge (your network) | Light commands and the bridge's event stream | While Home or the lights panel is open; while a video plays in film mode |
 | `api.open-meteo.com`, `geocoding-api.open-meteo.com` | Approximate coordinates (two decimals, about 1 km) or your time zone's city | Weather, at most every 30 minutes |
 | `ip-api.com` (plain HTTP) | Your network's public IP, to find a coarse place | Once, only if the TV's time zone has no city (e.g. `GMT+03:00`) |
 | Cover image addresses from your video apps | A normal image download | When a video app gives its cover as a link |

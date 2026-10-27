@@ -30,16 +30,14 @@ final class AppGrid {
 
     private final Activity activity;
     private final Apps apps;
-    private final FilmMode film;
     private final LinearLayout grid;
     private final List<View> cells = new ArrayList<>(); // one per app, in grid order; the card is child 0
     private View moving; // the cell being moved, null when not moving
     private boolean revealed;
 
-    AppGrid(Activity activity, Apps apps, FilmMode film) {
+    AppGrid(Activity activity, Apps apps) {
         this.activity = activity;
         this.apps = apps;
-        this.film = film;
         grid = new LinearLayout(activity);
         grid.setOrientation(LinearLayout.VERTICAL);
         grid.setClipChildren(false);
@@ -127,10 +125,7 @@ final class AppGrid {
                         .setInterpolator(Ui.SETTLE).start();
             }
         });
-        card.setOnClickListener(v -> {
-            film.start(app.pkg);
-            apps.launch(app);
-        });
+        card.setOnClickListener(v -> apps.launch(app));
         card.setOnLongClickListener(v -> {
             menu(app);
             return true;

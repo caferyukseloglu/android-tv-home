@@ -10,24 +10,20 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 
 /**
- * The TV's light engine. While a video app is open, every light in the TV's Hue entertainment area
- * (or just the chosen strip when there is none) follows what is playing: 6500 K white at once, then
- * the cover's colors, made more vivid, drifting slowly along the strip and across the lamps with soft
- * fades. Back on Home every light returns to how it was. One instance per process: get(context).
+ * The TV strip's light engine. Opening an app changes nothing; once a video has played for a few
+ * seconds with a cover, the strip takes the cover's colors, made more vivid, drifting slowly along it
+ * with soft fades. No cover: the strip keeps the color it has. Only the strip: the room's other lamps
+ * are left alone. Back on Home the strip returns to how it was. One instance per process: get(context).
  *
  * Threads: bridge work runs in order on Hue's network thread; the drift is scheduled on the main
  * thread, one step after the last one finished, so a slow or missing bridge never piles work up.
@@ -38,8 +34,6 @@ final class FilmMode {
             "com.stremio.one", "com.netflix.ninja", "com.google.android.youtube.tv", "com.amazon.amazonvideo.livingroom",
             "com.wbd.stream", "com.disney.disneyplus", "com.dsmart.blu.android", "com.upst.hayu", "tv.twitch.android.app",
             "com.kick.mobile", "ar.tvplayer.tv", "com.plexapp.android", "org.xbmc.kodi", "com.google.android.videos"));
-    // Full brightness by choice of the owner: dim it from the light panel when the room is dark.
-    private static final JSONObject BIAS = LightPanel.json("on", true, "ct", 153, "bri", 254); // 6500 K
     private static final long FLOW_MS = 1500; // one soft step every 1.5 s, faded over the same 1.5 s
     private static final double VIVID = 1.5; // cover colors are often pastel; Hue looks best saturated
     private static final int MIN_BRI = 127; // 50%: a dark poster still lights the room
@@ -88,16 +82,6 @@ final class FilmMode {
         prefs.edit().putString("light", lightId).apply();
     }
 
-    /** Before a video app opens: remember the lights, then 6500 K white until the cover arrives. */
-    void start(String pkg) {
-        String id = light();
-        if (id == null || !isVideo(pkg)) return;
-        hue.async(() -> {
-            for (String l : saveOnce(id)) hue.putState(l, BIAS);
-            return null;
-        }, FilmMode::log);
-    }
-
     /** A video app is playing with this cover: its colors start drifting over the lights. */
     void content(String pkg, Bitmap art, String uri) {
         String id = light();
@@ -106,7 +90,7 @@ final class FilmMode {
             saveOnce(id);
             Bitmap cover = art != null ? art : load(uri);
             if (cover == null) {
-                Log.i(TAG, pkg + ": no cover, staying white");
+                Log.i(TAG, pkg + ": cover could not be read, the strip keeps its color");
                 return null;
             }
             Bitmap small = Bitmap.createScaledBitmap(cover, 40, 20, true);
@@ -150,17 +134,15 @@ final class FilmMode {
         }
         int[] now = Colors.rotate(colors, step++);
         int level = bri;
+        String id = light();
         hue.async(() -> {
-            List<String> area = area();
-            for (int i = 0; i < area.size(); i++) {
-                String l = area.get(i);
-                if (i == 0 && stripV2 != null) { // the strip leads the area (saveOnce puts it first)
-                    v2.gradientById(stripV2, now, level * 100.0 / 254, (int) FLOW_MS);
-                } else {
-                    int c = now[i % now.length];
-                    hue.putState(l, LightPanel.json("on", true, "bri", level, "transitiontime", (int) (FLOW_MS / 100),
-                            "xy", Colors.rgbToXy((c >> 16) & 255, (c >> 8) & 255, c & 255)));
-                }
+            if (id == null) return null;
+            if (stripV2 != null) {
+                v2.gradientById(stripV2, now, level * 100.0 / 254, (int) FLOW_MS);
+            } else { // a single-color lamp walks through the palette instead
+                int c = now[0];
+                hue.putState(id, LightPanel.json("on", true, "bri", level, "transitiontime", (int) (FLOW_MS / 100),
+                        "xy", Colors.rgbToXy((c >> 16) & 255, (c >> 8) & 255, c & 255)));
             }
             return null;
         }, (ok, error) -> {
@@ -178,14 +160,18 @@ final class FilmMode {
             palette = null; // a cover that finished loading after Home must not drift during the next video
             String saved = prefs.getString("saved", null);
             if (saved != null) {
-                JSONObject states = new JSONObject(saved);
-                for (Iterator<String> it = states.keys(); it.hasNext(); ) {
-                    String l = it.next();
-                    hue.putState(l, restore(states.getJSONObject(l)));
+                JSONObject state = new JSONObject(saved);
+                if (state.has("on")) {
+                    hue.putState(prefs.getString("savedLight", ""), restore(state));
+                } else { // saved by v0.1, which drove the whole area: a map of light id -> state
+                    for (java.util.Iterator<String> it = state.keys(); it.hasNext(); ) {
+                        String l = it.next();
+                        hue.putState(l, restore(state.getJSONObject(l)));
+                    }
                 }
                 String look = prefs.getString("stripLook", null);
                 if (look != null && v2 != null && stripV2 != null) v2.put(stripV2, new JSONObject(look));
-                prefs.edit().remove("saved").remove("area").remove("stripLook").commit();
+                prefs.edit().remove("saved").remove("savedLight").remove("area").remove("stripLook").commit();
             }
             v2 = null;
             stripV2 = null;
@@ -195,30 +181,19 @@ final class FilmMode {
     }
 
     /**
-     * Remembers every light of the strip's entertainment area once per video session (a second video
-     * keeps the first memory), plus the strip's gradient and effect, which v1 cannot see. Blocking.
+     * Remembers the strip once per video session (a second video keeps the first memory), including
+     * its gradient and effect, which v1 cannot see. Blocking: runs on Hue's network thread.
      */
-    private List<String> saveOnce(String id) throws Exception {
+    private void saveOnce(String id) throws Exception {
         if (v2 == null) {
             v2 = new HueV2(context);
             stripV2 = v2.v2Id(id);
         }
         if (!prefs.contains("saved")) {
-            List<String> area = hue.entertainmentArea(id);
-            JSONObject states = new JSONObject();
-            for (String l : area) states.put(l, hue.lightState(l));
             JSONObject look = stripV2 == null ? null : v2.look(stripV2);
-            prefs.edit().putString("saved", states.toString()).putString("area", new JSONArray(area).toString())
+            prefs.edit().putString("saved", hue.lightState(id).toString()).putString("savedLight", id)
                     .putString("stripLook", look == null ? null : look.toString()).commit();
         }
-        return area();
-    }
-
-    private List<String> area() throws Exception {
-        JSONArray a = new JSONArray(prefs.getString("area", "[]"));
-        List<String> out = new ArrayList<>();
-        for (int i = 0; i < a.length(); i++) out.add(a.getString(i));
-        return out;
     }
 
     /**
