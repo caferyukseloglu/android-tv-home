@@ -16,7 +16,7 @@ LAUNCHERS="com.google.android.tvlauncher com.google.android.apps.tv.launcherx co
 build() {
     rm -rf build && mkdir -p build/classes build/dex dist
     "$BT/aapt2" compile --dir res -o build/res.zip
-    "$BT/aapt2" link -o build/unsigned.apk -I "$JAR" --manifest AndroidManifest.xml --java build/gen build/res.zip
+    "$BT/aapt2" link -o build/unsigned.apk -I "$JAR" --manifest AndroidManifest.xml -A assets --java build/gen build/res.zip
     javac -encoding UTF-8 --release 8 -Xlint:-options -classpath "$JAR" -d build/classes $(find src build/gen -name '*.java')
     "$BT/d8" --lib "$JAR" --min-api 26 --output build/dex $(find build/classes -name '*.class')
     (cd build/dex && zip -q -u ../unsigned.apk classes.dex)
@@ -33,10 +33,11 @@ build() {
 run_tests() {
     mkdir -p build/test
     # Only the pure-Java classes: they run on the Mac's JVM without Android.
-    javac -d build/test src/io/github/caferyukseloglu/tvhome/{AppOrder,Colors,Palettes,Weather}.java tools/*Test.java
+    javac -d build/test src/io/github/caferyukseloglu/tvhome/{AppOrder,Colors,Palettes,Season,Weather}.java tools/*Test.java
     java -cp build/test "$PKG.AppOrderTest"
     java -cp build/test "$PKG.ColorsTest"
     java -cp build/test "$PKG.PalettesTest"
+    java -cp build/test "$PKG.SeasonTest"
     java -cp build/test "$PKG.WeatherTest"
 }
 
@@ -47,6 +48,8 @@ install() {
     adb shell appops set "$PKG" APP_AUTO_START allow 2>/dev/null || true
     # Film mode reads what is playing (title, cover) through a notification listener.
     adb shell cmd notification allow_listener "$PKG/.MediaWatch"
+    # Running apps lists what ran lately from usage stats.
+    adb shell appops set "$PKG" GET_USAGE_STATS allow
 }
 
 # Make this the home screen. If the TV still opens its own launcher, switch that launcher off

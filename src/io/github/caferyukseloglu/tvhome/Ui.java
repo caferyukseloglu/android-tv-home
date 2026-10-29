@@ -14,6 +14,7 @@ final class Ui {
     static final int CARD = 0xFF1E2026;
 
     private static final float TILT = 7f; // degrees a card leans toward the way focus came in
+    static boolean reduced; // Settings -> Reduce motion: no lean, short plain moves
     private static int lastDx; // direction of the last arrow key: -1, 0 or 1
     private static int lastDy;
 
@@ -39,11 +40,37 @@ final class Ui {
     }
 
     static TextView text(Context c, float sp, int color, boolean bold) {
+        return text(c, sp, color, bold ? 600 : 400);
+    }
+
+    /** weight: Outfit's 100 (thin) to 900 (black). */
+    static TextView text(Context c, float sp, int color, int weight) {
         TextView t = new TextView(c);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(color);
-        t.setTypeface(Typeface.create("sans-serif", bold ? Typeface.BOLD : Typeface.NORMAL));
+        t.setTypeface(font(c, weight));
         t.setSingleLine(true);
+        return t;
+    }
+
+    /** Small spaced capitals for quiet labels: the greeting, the date, the pills. */
+    static TextView label(Context c, float sp, int color) {
+        TextView t = text(c, sp, color, 500);
+        t.setAllCaps(true);
+        t.setLetterSpacing(0.14f);
+        return t;
+    }
+
+    private static final java.util.Map<Integer, Typeface> FONTS = new java.util.HashMap<>();
+
+    /** Outfit (assets/outfit.ttf, one variable font) at a weight; its default axis is 100, so always set it. */
+    static Typeface font(Context c, int weight) {
+        Typeface t = FONTS.get(weight);
+        if (t == null) {
+            t = new Typeface.Builder(c.getAssets(), "outfit.ttf")
+                    .setFontVariationSettings("'wght' " + weight).setFallback("sans-serif").build();
+            FONTS.put(weight, t);
+        }
         return t;
     }
 
@@ -81,7 +108,7 @@ final class Ui {
                 && e.getAction() == android.view.KeyEvent.ACTION_UP && view.isLongClickable() && view.performLongClick());
         v.setCameraDistance(dp(c, 1200)); // a deep camera keeps the lean subtle instead of a warp
         v.setOnFocusChangeListener((view, has) -> {
-            if (has && zoom > 1f) {
+            if (has && zoom > 1f && !reduced) {
                 view.setRotationY(lastDx * TILT);
                 view.setRotationX(-lastDy * TILT);
             }
@@ -89,8 +116,8 @@ final class Ui {
                     .scaleX(has ? zoom : 1f).scaleY(has ? zoom : 1f)
                     .rotationX(0).rotationY(0)
                     .translationZ(has ? dp(c, 18) : 0)
-                    .setInterpolator(has ? SPRING : SETTLE)
-                    .setDuration(has ? 420 : 220)
+                    .setInterpolator(has && !reduced ? SPRING : SETTLE)
+                    .setDuration(reduced ? 120 : has ? 420 : 220)
                     .start();
             ring.setStroke(has ? dp(c, 2) : 0, 0xCCFFFFFF);
             if (also != null) also.onFocusChange(view, has);

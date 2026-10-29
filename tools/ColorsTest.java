@@ -29,7 +29,20 @@ public final class ColorsTest {
         check(near(Colors.luminance(new int[] {0xFFFFFF, 0}), 0.5, 1e-9), "luminance averages the frame");
         check(java.util.Arrays.equals(Colors.rotate(new int[] {1, 2, 3}, 1), new int[] {2, 3, 1}), "rotate moves colors along");
         check(java.util.Arrays.equals(Colors.rotate(new int[] {1, 2, 3}, 4), new int[] {2, 3, 1}), "rotate wraps around");
-        System.out.println("ColorsTest: 15 passed");
+        // Banner accents: a red logo on white (Netflix) glows red, not grey; a blue field (Prime) glows blue.
+        int[] logo = new int[100];
+        for (int i = 0; i < 100; i++) logo[i] = i < 20 ? 0xFFE50914 : 0xFFFFFFFF;
+        int red2 = Colors.accent(logo);
+        check(((red2 >> 16) & 255) > 200 && ((red2 >> 8) & 255) < 60, "a red logo on white gives red: " + Integer.toHexString(red2));
+        int[] field = new int[100];
+        for (int i = 0; i < 100; i++) field[i] = i < 10 ? 0xFFFFFFFF : 0xFF1A98FF;
+        int blue = Colors.accent(field);
+        check((blue & 255) > 200 && ((blue >> 16) & 255) < 80, "a blue field gives blue: " + Integer.toHexString(blue));
+        int[] grey = new int[100];
+        for (int i = 0; i < 100; i++) grey[i] = i % 2 == 0 ? 0xFF202020 : 0xFFF0F0F0;
+        check(Colors.accent(grey) == -1, "black, white and grey have no accent");
+        check(Colors.accent(new int[100]) == -1, "a transparent banner has no accent");
+        System.out.println("ColorsTest: 19 passed");
     }
 
     private static boolean near(double a, double b, double tolerance) {

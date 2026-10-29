@@ -4,6 +4,10 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.media.MediaMetadata;
 import android.media.session.MediaController;
 import android.media.session.MediaSessionManager;
@@ -32,6 +36,9 @@ final class NowPlaying {
     private final MediaSessionManager.OnActiveSessionsChangedListener changed = this::bind;
     private MediaController controller;
     private MediaController.Callback callback;
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private final Runnable tick = this::tick;
+    private View progressFill; // the moving part of the progress line, null when the track has no length
 
     NowPlaying(Activity activity, ViewGroup slot) {
         this.activity = activity;
@@ -41,6 +48,7 @@ final class NowPlaying {
     }
 
     void resume() {
+        main.post(tick);
         try {
             sessions.addOnActiveSessionsChangedListener(changed, listener);
             bind(sessions.getActiveSessions(listener));
@@ -50,6 +58,8 @@ final class NowPlaying {
     }
 
     void pause() {
+        main.removeCallbacks(tick);
+        slot.removeAllViews(); // the bars stop with their card; resume draws it again from the live session
         try {
             sessions.removeOnActiveSessionsChangedListener(changed);
         } catch (Exception ignored) {
@@ -109,10 +119,11 @@ final class NowPlaying {
 
         LinearLayout card = new LinearLayout(activity);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        int pad = Ui.dp(activity, 14);
-        card.setPadding(pad, 0, Ui.dp(activity, 20), 0);
+        int pad = Ui.dp(activity, 12);
+        card.setPadding(pad, 0, Ui.dp(activity, 22), 0);
 
-        card.addView(cover(m), new LinearLayout.LayoutParams(Ui.dp(activity, 44), Ui.dp(activity, 44)));
+        Bitmap art = m == null ? null : MediaWatch.firstBitmap(m);
+        card.addView(cover(art), new LinearLayout.LayoutParams(Ui.dp(activity, 50), Ui.dp(activity, 50)));
 
         LinearLayout texts = new LinearLayout(activity);
         texts.setOrientation(LinearLayout.VERTICAL);
@@ -124,24 +135,28 @@ final class NowPlaying {
         sub.setText(artist == null || artist.equals(title.getText().toString()) ? appName(controller.getPackageName()) : artist);
         texts.addView(title);
         texts.addView(sub);
+        texts.addView(progress(m));
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
         tp.leftMargin = Ui.dp(activity, 14);
         card.addView(texts, tp);
 
-        TextView icon = Ui.text(activity, 18, Ui.TEXT, false);
-        icon.setText(playing ? "॥" : "▶");
-        card.addView(icon);
+        Equalizer bars = new Equalizer(activity);
+        bars.setPlaying(playing);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(Ui.dp(activity, 22), Ui.dp(activity, 20));
+        bp.leftMargin = Ui.dp(activity, 18);
+        card.addView(bars, bp);
 
         FrameLayout wrap = new FrameLayout(activity);
         wrap.addView(card);
         wrap.setFocusable(true);
-        Ui.focusable(wrap, Ui.rounded(activity, 0x22FFFFFF), null, 1.03f);
+        Ui.focusable(wrap, tint(art), null, 1.03f);
+        wrap.setRevealOnFocusHint(false);
         wrap.setOnClickListener(v -> {
             if (playing) controller.getTransportControls().pause();
             else controller.getTransportControls().play();
         });
         wrap.setOnKeyListener((v, code, event) -> skip(code, event));
-        slot.addView(wrap, new ViewGroup.LayoutParams(Ui.dp(activity, 360), Ui.dp(activity, 60)));
+        slot.addView(wrap, new ViewGroup.LayoutParams(Ui.dp(activity, 400), Ui.dp(activity, 70)));
         if (hadFocus) wrap.requestFocus();
     }
 
@@ -161,14 +176,69 @@ final class NowPlaying {
         return false;
     }
 
-    private View cover(MediaMetadata m) {
+    private View cover(Bitmap b) {
         ImageView art = new ImageView(activity);
         art.setScaleType(ImageView.ScaleType.CENTER_CROP);
         art.setClipToOutline(true);
         art.setBackground(Ui.rounded(activity, Ui.CARD));
-        Bitmap b = m == null ? null : MediaWatch.firstBitmap(m);
         if (b != null) art.setImageDrawable(new BitmapDrawable(activity.getResources(), b));
         return art;
+    }
+
+    /** The card glows in the cover's color from the left, fading into glass. */
+    private GradientDrawable tint(Bitmap art) {
+        int accent = -1;
+        if (art != null) {
+            Bitmap small = Bitmap.createScaledBitmap(art, 24, 24, true);
+            int[] px = new int[24 * 24];
+            small.getPixels(px, 0, 24, 0, 0, 24, 24);
+            accent = Colors.accent(px);
+        }
+        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                accent == -1 ? new int[] {0x2EFFFFFF, 0x1AFFFFFF} : new int[] {0x73000000 | accent, 0x1AFFFFFF});
+        bg.setCornerRadius(Ui.dp(activity, 18));
+        return bg;
+    }
+
+    /** A thin line under the title that fills as the track plays; empty for streams without a length. */
+    private View progress(MediaMetadata m) {
+        FrameLayout track = new FrameLayout(activity);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(activity, 3));
+        lp.topMargin = Ui.dp(activity, 8);
+        track.setLayoutParams(lp);
+        long duration = m == null ? 0 : m.getLong(MediaMetadata.METADATA_KEY_DURATION);
+        progressFill = null;
+        if (duration <= 0) return track;
+        GradientDrawable rail = new GradientDrawable();
+        rail.setColor(0x33FFFFFF);
+        rail.setCornerRadius(Ui.dp(activity, 2));
+        track.setBackground(rail);
+        View fill = new View(activity);
+        GradientDrawable bar = new GradientDrawable();
+        bar.setColor(0xE6FFFFFF);
+        bar.setCornerRadius(Ui.dp(activity, 2));
+        fill.setBackground(bar);
+        fill.setPivotX(0);
+        fill.setScaleX(0);
+        track.addView(fill, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        progressFill = fill;
+        tick();
+        return track;
+    }
+
+    /** Twice a second: where the track is, from the last reported position and the time since. */
+    private void tick() {
+        main.removeCallbacks(tick);
+        if (progressFill != null && controller != null && controller.getPlaybackState() != null && controller.getMetadata() != null) {
+            PlaybackState s = controller.getPlaybackState();
+            long duration = controller.getMetadata().getLong(MediaMetadata.METADATA_KEY_DURATION);
+            long at = s.getPosition();
+            if (s.getState() == PlaybackState.STATE_PLAYING) {
+                at += (long) ((SystemClock.elapsedRealtime() - s.getLastPositionUpdateTime()) * s.getPlaybackSpeed());
+            }
+            if (duration > 0) progressFill.setScaleX(Math.max(0f, Math.min(1f, at / (float) duration)));
+        }
+        main.postDelayed(tick, 500);
     }
 
     private static boolean hasContent(MediaController c) {

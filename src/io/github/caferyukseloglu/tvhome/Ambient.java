@@ -2,7 +2,6 @@ package io.github.caferyukseloglu.tvhome;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -54,13 +53,14 @@ public final class Ambient extends DreamService {
         time.setFormat12Hour("h:mm");
         time.setTextSize(TypedValue.COMPLEX_UNIT_SP, 120);
         time.setTextColor(0xFFF5F5F7);
-        time.setTypeface(Typeface.create("sans-serif-thin", Typeface.NORMAL));
+        time.setTypeface(Ui.font(this, 150));
         time.setIncludeFontPadding(false);
         TextClock date = new TextClock(this);
         date.setFormat24Hour("EEEE, d MMMM");
         date.setFormat12Hour("EEEE, d MMMM");
         date.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         date.setTextColor(0xB3F5F5F7);
+        date.setTypeface(Ui.font(this, 300));
         TextView weather = Ui.text(this, 26, 0xFFF5F5F7, false);
         TextView range = Ui.text(this, 17, 0x99F5F5F7, false);
         block.addView(time);

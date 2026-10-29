@@ -82,6 +82,39 @@ final class Colors {
         return channel(max - (max - r) * scale) << 16 | channel(max - (max - g) * scale) << 8 | channel(max - (max - b) * scale);
     }
 
+    /**
+     * A banner's brand color for the glow behind Home: the strongest hue among its colored pixels,
+     * at full brightness. White, black and grey are skipped, so a red logo on white gives red.
+     * -1 when the banner has no real color (under 3% colored pixels).
+     */
+    static int accent(int[] argb) {
+        final int bins = 12;
+        long[] r = new long[bins], g = new long[bins], b = new long[bins], n = new long[bins];
+        for (int c : argb) {
+            int cr = (c >> 16) & 255, cg = (c >> 8) & 255, cb = c & 255;
+            int max = Math.max(cr, Math.max(cg, cb)), min = Math.min(cr, Math.min(cg, cb));
+            if ((c >>> 24) < 128 || max < 40 || max - min < max / 4) continue;
+            int bin = hue(cr, cg, cb, max, min) * bins / 360 % bins;
+            r[bin] += cr;
+            g[bin] += cg;
+            b[bin] += cb;
+            n[bin]++;
+        }
+        int best = 0;
+        for (int i = 1; i < bins; i++) if (n[i] > n[best]) best = i;
+        if (n[best] * 100 < argb.length * 3L) return -1;
+        long max = Math.max(r[best], Math.max(g[best], b[best]));
+        return (int) (r[best] * 255 / max) << 16 | (int) (g[best] * 255 / max) << 8 | (int) (b[best] * 255 / max);
+    }
+
+    private static int hue(int r, int g, int b, int max, int min) {
+        double d = max - min, h;
+        if (max == r) h = ((g - b) / d) % 6;
+        else if (max == g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        return (int) ((h * 60 + 360) % 360);
+    }
+
     /** 0 = black frame, 1 = white frame. */
     static double luminance(int[] argb) {
         double sum = 0;

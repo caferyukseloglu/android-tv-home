@@ -1,11 +1,13 @@
 package io.github.caferyukseloglu.tvhome;
 
 import android.app.Activity;
-import android.app.Dialog;
 import android.content.Intent;
 import android.net.Uri;
+import android.provider.Settings;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Rect;
-import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -14,31 +16,51 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * The apps as a tvOS-style grid: five across, the name fading in under the focused card only.
- * Hold OK for Move / Hide; while moving, the arrows carry the card through the grid.
+ * The apps as a tvOS-style grid: five across, the first row in a dock band. The focused app's name
+ * is not under the card but in Home's large title, through {@link Host}.
+ * Hold OK (or Menu) for a glass menu under the card. Move lifts the card and dims the others; the
+ * arrows carry it through the grid while the page holds still around it.
  */
 final class AppGrid {
+    interface Host {
+        /** accent: the banner's brand color as 0xRRGGBB, or -1 when it has none; dock: the card is in the first row. */
+        void focused(Apps.App app, int accent, boolean dock);
+
+        /** Move mode on or off, for the hint at the bottom of the screen. */
+        void moving(boolean on);
+
+        /** Runs a re-layout of the grid without letting the page scroll away (REA: their keepScroll). */
+        void keepScroll(Runnable relayout);
+    }
+
     static final int COLUMNS = 5;
     private static final int CARD_W = 152; // dp: five cards and four gaps fill the 840 dp between the margins
     private static final int CARD_H = 86;
     private static final int GAP = 20;
+    private static final int DOCK_PAD = 14; // dp of band around the first row
+    private static final int HINT_ROOM = 96; // dp kept clear under a moving card, where the hint bar sits
 
     private final Activity activity;
     private final Apps apps;
+    private final Host host;
+    private final Map<String, Integer> accents = new HashMap<>(); // per package, decoded once
     private final LinearLayout grid;
     private final List<View> cells = new ArrayList<>(); // one per app, in grid order; the card is child 0
     private View moving; // the cell being moved, null when not moving
+    private boolean relayout; // focus lands on stray cards while rows are rebuilt: ignore it
     private boolean revealed;
 
-    AppGrid(Activity activity, Apps apps) {
+    AppGrid(Activity activity, Apps apps, Host host) {
         this.activity = activity;
         this.apps = apps;
+        this.host = host;
         grid = new LinearLayout(activity);
         grid.setOrientation(LinearLayout.VERTICAL);
         grid.setClipChildren(false);
@@ -49,7 +71,12 @@ final class AppGrid {
         return grid;
     }
 
+    boolean isMoving() {
+        return moving != null;
+    }
+
     void show(String focusPkg) {
+        if (moving != null) host.moving(false);
         moving = null; // the cards are rebuilt: a move in progress would point at a card that is gone
         cells.clear();
         View focus = null;
@@ -76,7 +103,7 @@ final class AppGrid {
         }
     }
 
-    /** Rows of five; called again after a move, the cells keep their views and focus. */
+    /** Rows of five, the first in the dock band; called again after a move, the cells keep their views and focus. */
     private void layout() {
         grid.removeAllViews();
         LinearLayout row = null;
@@ -86,7 +113,17 @@ final class AppGrid {
             if (i % COLUMNS == 0) {
                 row = new LinearLayout(activity);
                 row.setClipChildren(false);
-                grid.addView(row);
+                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                rp.bottomMargin = Ui.dp(activity, GAP);
+                if (i == 0) { // the band reaches past the cards, so the dock's cards line up with the rows below
+                    int pad = Ui.dp(activity, DOCK_PAD);
+                    row.setPadding(pad, pad, pad, pad);
+                    row.setClipToPadding(false); // the focus zoom grows into the band
+                    rp.leftMargin = rp.rightMargin = -pad;
+                    rp.bottomMargin = Ui.dp(activity, GAP + 8);
+                    row.setBackground(dockBand());
+                }
+                grid.addView(row, rp);
             }
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(Ui.dp(activity, CARD_W), ViewGroup.LayoutParams.WRAP_CONTENT);
             if (i % COLUMNS != COLUMNS - 1) p.rightMargin = Ui.dp(activity, GAP);
@@ -112,27 +149,22 @@ final class AppGrid {
         View sheen = sheen();
         card.addView(sheen, new FrameLayout.LayoutParams(Ui.dp(activity, 90), ViewGroup.LayoutParams.MATCH_PARENT));
 
-        TextView name = Ui.text(activity, 14, Ui.TEXT, false);
-        name.setText(app.hidden ? activity.getString(R.string.hidden) + " · " + app.label : app.label);
-        name.setGravity(Gravity.CENTER_HORIZONTAL);
-        name.setAlpha(0f);
-        name.setPadding(0, Ui.dp(activity, 12), 0, 0);
-
         Ui.focusable(card, Ui.rounded(activity, Ui.CARD), (v, has) -> {
-            name.animate().alpha(has ? 1f : 0f).setDuration(200).start();
-            if (has) { // scroll so the name under the card and a margin show too, not just the card
+            if (has && !relayout) { // scroll so a margin under the card shows too, room for the focus zoom
                 View cell = (View) v.getParent();
-                cell.requestRectangleOnScreen(new Rect(0, 0, cell.getWidth(), cell.getHeight() + Ui.dp(activity, 28)), false);
+                cell.requestRectangleOnScreen(new Rect(0, 0, cell.getWidth(), cell.getHeight() + Ui.dp(activity, GAP)), false);
+                host.focused(app, accent(app), cells.indexOf(cell) < COLUMNS);
             }
-            if (has) { // one glint across the banner, like light catching glass
+            if (has && !relayout && moving == null) { // one glint across the banner, like light catching glass
                 sheen.setTranslationX(-Ui.dp(activity, 100));
                 sheen.animate().translationX(Ui.dp(activity, CARD_W + 20)).setStartDelay(90).setDuration(700)
                         .setInterpolator(Ui.SETTLE).start();
             }
         });
+        card.setRevealOnFocusHint(false); // Home glides to the card itself (MainActivity.Glide)
         card.setOnClickListener(v -> apps.launch(app));
         card.setOnLongClickListener(v -> {
-            menu(app);
+            if (moving == null) menu(app, v);
             return true;
         });
 
@@ -140,8 +172,34 @@ final class AppGrid {
         cell.setOrientation(LinearLayout.VERTICAL);
         cell.setClipChildren(false);
         cell.addView(card, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(activity, CARD_H)));
-        cell.addView(name, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(activity, 34)));
         return cell;
+    }
+
+    /** A faint glass band behind the first row, where Apple TV puts the dock. */
+    private GradientDrawable dockBand() {
+        GradientDrawable band = new GradientDrawable();
+        band.setColor(0x14FFFFFF);
+        band.setStroke(Ui.dp(activity, 1), 0x1FFFFFFF);
+        band.setCornerRadius(Ui.dp(activity, 14 + DOCK_PAD));
+        return band;
+    }
+
+    /** The banner (or icon) drawn small, then {@link Colors#accent}. A copy is drawn, so the card's own drawable keeps its bounds. */
+    private int accent(Apps.App app) {
+        Integer cached = accents.get(app.pkg);
+        if (cached != null) return cached;
+        Drawable art = app.banner != null ? app.banner : app.icon;
+        Drawable copy = art.getConstantState() != null ? art.getConstantState().newDrawable().mutate() : art;
+        int w = 32, h = 18;
+        Bitmap small = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        copy.setBounds(0, 0, w, h);
+        copy.draw(new Canvas(small));
+        int[] px = new int[w * h];
+        small.getPixels(px, 0, w, 0, 0, w, h);
+        small.recycle();
+        int accent = Colors.accent(px);
+        accents.put(app.pkg, accent);
+        return accent;
     }
 
     /** A soft diagonal band of light, parked off the card until focus sends it across. */
@@ -164,59 +222,45 @@ final class AppGrid {
         return (Apps.App) card(cell).getTag();
     }
 
-    /** Hold OK on an app: move it, or hide/show it. */
-    private void menu(Apps.App app) {
-        Dialog menu = new Dialog(activity, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
-        LinearLayout list = new LinearLayout(activity);
-        list.setOrientation(LinearLayout.VERTICAL);
-        list.setClipChildren(false);
-        int pad = Ui.dp(activity, 20);
-        list.setPadding(pad, pad, pad, pad);
-        list.setBackground(Ui.rounded(activity, 0xFF17191E));
-        TextView title = Ui.text(activity, 20, Ui.TEXT, true);
-        title.setText(app.label);
-        title.setPadding(Ui.dp(activity, 4), 0, 0, Ui.dp(activity, 8));
-        list.addView(title);
-        if (!app.hidden) list.addView(menuItem(R.string.move, () -> {
+    /** Hold OK on an app: a glass menu under its card. */
+    private void menu(Apps.App app, View card) {
+        Sheet menu = new Sheet(activity, app.label);
+        if (!app.hidden) menu.add(activity.getString(R.string.move), () -> {
             menu.dismiss();
             startMove(app.pkg);
-        }));
-        list.addView(menuItem(app.hidden ? R.string.show : R.string.hide, () -> {
+        });
+        menu.add(activity.getString(app.hidden ? R.string.show : R.string.hide), () -> {
             menu.dismiss();
             apps.toggleHidden(app.pkg);
             show(app.pkg);
-        }));
-        if (apps.removable(app.pkg)) list.addView(menuItem(R.string.uninstall, () -> {
+        });
+        menu.add(activity.getString(R.string.close_app), () -> {
+            menu.dismiss();
+            Recents recents = new Recents(activity);
+            recents.close(java.util.Collections.singletonList(app.pkg), () -> recents.info(app.pkg));
+        });
+        menu.add(activity.getString(R.string.app_info), () -> {
+            menu.dismiss();
+            activity.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + app.pkg)));
+        });
+        if (apps.removable(app.pkg)) menu.add(activity.getString(R.string.uninstall), () -> {
             menu.dismiss();
             // Android's own uninstall prompt; Home reloads the grid when it comes back.
             activity.startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + app.pkg)));
-        }));
-        menu.setContentView(list, new ViewGroup.LayoutParams(Ui.dp(activity, 320), ViewGroup.LayoutParams.WRAP_CONTENT));
-        menu.getWindow().setBackgroundDrawable(new ColorDrawable(0));
-        menu.show();
+        });
+        menu.showAt(card, 300);
     }
 
-    private View menuItem(int text, Runnable action) {
-        TextView item = Ui.text(activity, 17, Ui.TEXT, false);
-        item.setText(text);
-        item.setGravity(Gravity.CENTER_VERTICAL);
-        item.setPadding(Ui.dp(activity, 16), 0, Ui.dp(activity, 16), 0);
-        Ui.focusable(item, Ui.rounded(activity, Ui.CARD), null, 1f);
-        item.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(activity, 48));
-        p.topMargin = Ui.dp(activity, 8);
-        item.setLayoutParams(p);
-        return item;
-    }
-
-    /** The card lifts; the arrows carry it through the grid, OK or Back puts it down and saves the order. */
+    /** The card lifts, the others dim; the arrows carry it, OK or Back puts it down and saves the order. */
     private void startMove(String pkg) {
         for (View cell : cells) {
             if (app(cell).pkg.equals(pkg)) moving = cell;
         }
         if (moving == null) return;
+        for (View cell : cells) cell.animate().alpha(cell == moving ? 1f : 0.4f).setDuration(180).start();
         card(moving).requestFocus();
-        card(moving).animate().translationY(-Ui.dp(activity, 10)).setDuration(140).start();
+        card(moving).animate().translationY(-Ui.dp(activity, 12)).setDuration(160).start();
+        host.moving(true);
     }
 
     /** True when the key was used for moving; the activity then passes nothing on. */
@@ -242,15 +286,24 @@ final class AppGrid {
         if (to >= 0 && to < cells.size() && !app(cells.get(to)).hidden) { // hidden apps stay at the end
             cells.remove(from);
             cells.add(to, moving);
-            layout();
-            card(moving).requestFocus();
+            host.keepScroll(() -> {
+                relayout = true;
+                layout();
+                card(moving).requestFocus();
+                relayout = false;
+            });
+            // Now the page may follow the card, smoothly, as far as it needs to.
+            View cell = moving;
+            cell.post(() -> cell.requestRectangleOnScreen(new Rect(0, 0, cell.getWidth(), cell.getHeight() + Ui.dp(activity, HINT_ROOM)), false));
         }
         return true;
     }
 
     private void endMove() {
-        card(moving).animate().translationY(0).setDuration(140).start();
+        card(moving).animate().translationY(0).setDuration(160).start();
+        for (View cell : cells) cell.animate().alpha(1f).setDuration(180).start();
         moving = null;
+        host.moving(false);
         List<String> order = new ArrayList<>();
         for (View cell : cells) order.add(app(cell).pkg);
         apps.saveOrder(order);
