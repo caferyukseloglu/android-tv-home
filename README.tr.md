@@ -26,10 +26,14 @@ Reklam yok, sponsorlu satır yok, hesap yok. Düz Java, kütüphane yok, yaklaş
   Sayfa odakla birlikte süzülür; ızgara yukarı gelirken saat ve başlık solar.
 - **Temalar.** Otomatik takvimi izler: Cadılar Bayramı haftasında (24 Ekim – 1 Kasım) ana ekran mora döner, turuncu
   bir ışık, selamlamanın yanında titreyen bir balkabağı feneri ve günde bir kez ana ekranın üstünden uçan bir yarasa
-  sürüsü gelir. Ya da Ayarlar'dan Varsayılan, Cadılar Bayramı, Gece yarısı (OLED için saf siyah, ışıksız) veya
-  Aurora seç.
+  sürüsü gelir. Ya da Ayarlar'dan Varsayılan, Gece dağları, Alacakaranlık, Şafak, Cadılar Bayramı, Gece yarısı (OLED için
+  saf siyah, ışıksız) veya Aurora seç. Üç sahne kodla çizilmiş manzaralardır (yıldızlar, ay ya da alçak güneş, puslu
+  üç sırt): birkaç KB, fotoğraf yok.
+- **Denetim paneli.** Denetim pill'i sağdan kaydırır: ağ, Bluetooth, ses, kaynaklar, bellek (Açık uygulamalar'ı açar),
+  ekran koruyucu, arama ve ayarlar, her biri canlı durumuyla, altında Hue ışıklar. TV'de karşılığı olmayan kutular
+  gösterilmez.
 - **Senin sıran.** Bir uygulamada OK'e basılı tut (ya da Menü'ye bas): kartından cam bir menü iner; **Taşı**,
-  **Gizle**, **Kapat**, **Uygulama bilgisi** ve **Kaldır** (senin yüklediğin uygulamalar). Taşı kartı kaldırır ve
+  **Gizle**, **Yeniden adlandır**, **Kapat**, **Uygulama bilgisi** ve **Kaldır** (senin yüklediğin uygulamalar). Taşı kartı kaldırır ve
   diğerlerini karartır; oklar kartı ızgarada gezdirirken sayfa yerinde durur, OK bırakır.
 - **Açık uygulamalar.** Ayarlar → Açık uygulamalar son kullandıklarını listeler, üstte kullanılan bellek. **Tümünü
   kapat** çalanı durdurur ve Android'den uygulamaları kapatmasını ister; bir uygulamanın satırı kendi bilgi
@@ -40,7 +44,7 @@ Reklam yok, sponsorlu satır yok, hesap yok. Düz Java, kütüphane yok, yaklaş
 - **Şimdi çalıyor.** Bir şey çalarken (Spotify, YouTube, Stremio...) üstte kapağı ve başlığı olan bir kart çıkar;
   kapağın renginde, çalarken hareket eden çubuklar ve parça ilerledikçe dolan bir çizgiyle. OK duraklatır ya da
   oynatır, Sol ve Sağ atlar. Arka planda unutulmuş bir video bir tuş uzağında.
-- **Hue ışıklar bir tuş uzağında.** Ayarlar'ın yanındaki Işıklar pill'i ışık panelini sağdan kaydırır: her lamba
+- **Hue ışıklar bir tuş uzağında.** Denetim panelinin (Denetim pill'i) sonunda ışıklar: her lamba
   için lambanın gerçek renginde bir kart; duvar anahtarından kapalı lambalar bunu söyler. OK lambayı açar ya da
   kapatır; OK'e basılı tutmak parlaklık, renkler, Hue uygulamasının sahnelerinden 103 palet, kendi Hue sahnelerin
   ve köprünün efektleri (mum, şömine, opal...) için. Hue uygulamasından ya da duvar anahtarından yapılan
@@ -50,9 +54,10 @@ Reklam yok, sponsorlu satır yok, hesap yok. Düz Java, kütüphane yok, yaklaş
   geçişlerle şerit boyunca yavaşça kaydırır. Önizlemelerde gezinmek ve kapaksız videolar rengine dokunmaz,
   odadaki diğer lambalara da. Duraklatınca ya da beklemede kayma durur. Ana ekrana dönünce şerit, gradyanı ya da
   efektiyle birlikte eski haline döner.
-- **Işıklar her yerden.** Kumandada tek bir tuş (TCL kumandalarında 123 tuşu) aynı paneli, ne oynuyorsa onun
-  üstüne sağdan kaydırır. Uygulama Ayarlar'dan zorla durdurulursa Android bu tuşu kapatır; geri getirmek için
-  `./home.sh panel-key` komutunu tekrar çalıştır.
+- **Panel her yerden (isteğe bağlı).** `./home.sh panel-key` ile kumandada tek bir tuş (TCL kumandalarında 123)
+  denetim panelini ne oynuyorsa onun üstüne kaydırır; panele uyku zamanlayıcı ve Ekranı kapat eklenir. Bu, her
+  kumanda tuşunu gören bir erişilebilirlik servisidir ve bunun yapıldığı TCL'de açıkken kumanda düzgün çalışmadı;
+  bu yüzden sen açmadıkça kapalı. Ayarlar → Erişilebilirlik'ten yine kapatılır.
 - **Ekran koruyucu.** Yavaşça kayan bir ışığın üstünde büyük ince bir saat, tarih ve hava durumu; yazı her dakika
   yer değiştirir, böylece ekranda iz kalmaz.
 - Hue Bridge'i kendisi bulur (mDNS); eşleştirme köprünün düğmesine bir kez basmaktır.
@@ -97,7 +102,7 @@ seçenekleri).
 adb connect 192.168.1.80:5555     # TV'nin adresi; TV'deki onayı kabul et
 ./home.sh install                 # derle, yükle, Şimdi çalıyor / film modunun medya oturumunu okumasına izin ver
 ./home.sh home                    # ana ekran ve ekran koruyucu yap
-./home.sh panel-key               # isteğe bağlı: tek bir kumanda tuşu ışık panelini her yerden açar
+./home.sh panel-key               # isteğe bağlı: tek bir kumanda tuşu denetim panelini her yerden açar
 ./home.sh restore                 # ana ekranı TV'nin kendi başlatıcısına geri ver
 ```
 

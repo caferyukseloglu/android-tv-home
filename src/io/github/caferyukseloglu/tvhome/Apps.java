@@ -69,7 +69,8 @@ final class Apps {
                 art = new App(pkg, r.loadLabel(pm), banner, r.loadIcon(pm), false);
                 artwork.put(pkg, art);
             }
-            apps.add(new App(pkg, art.label, art.banner, art.icon, hidden.contains(pkg)));
+            String renamed = prefs.getString("label:" + pkg, null);
+            apps.add(new App(pkg, renamed != null ? renamed : art.label, art.banner, art.icon, hidden.contains(pkg)));
         }
         return apps;
     }
@@ -87,6 +88,12 @@ final class Apps {
         } catch (PackageManager.NameNotFoundException gone) {
             return false;
         }
+    }
+
+    /** name empty or null: back to the app's own name. */
+    void rename(String pkg, String name) {
+        if (name == null || name.trim().isEmpty()) prefs.edit().remove("label:" + pkg).apply();
+        else prefs.edit().putString("label:" + pkg, name.trim()).apply();
     }
 
     void toggleHidden(String pkg) {

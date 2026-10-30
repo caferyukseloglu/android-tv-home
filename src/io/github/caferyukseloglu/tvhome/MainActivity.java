@@ -42,6 +42,7 @@ public final class MainActivity extends Activity implements AppGrid.Host {
     private Pumpkin pumpkin;
     private Theme theme;
     private boolean glowOn;
+    private String sceneShown; // the scene drawn as the backdrop now, null for a plain room
     private final GradientDrawable room = new GradientDrawable();
     private final GradientDrawable glow = new GradientDrawable();
     private ValueAnimator glowFade;
@@ -117,7 +118,6 @@ public final class MainActivity extends Activity implements AppGrid.Host {
         hp.bottomMargin = Ui.dp(this, 28);
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackground(room);
         root.addView(ambient);
         root.addView(scroll);
         root.addView(bats);
@@ -161,6 +161,15 @@ public final class MainActivity extends Activity implements AppGrid.Host {
         Ui.reduced = prefs.getBoolean("reduced_motion", false);
         glowOn = theme.glow && prefs.getBoolean("glow", true);
         room.setColors(theme.room);
+        Scene scene = Scene.of(theme.id);
+        View root = findViewById(android.R.id.content);
+        if (scene == null) {
+            root.setBackground(room);
+        } else if (!theme.id.equals(sceneShown)) { // drawn once per change, half size: it is soft by nature
+            android.util.DisplayMetrics m = getResources().getDisplayMetrics();
+            root.setBackground(new android.graphics.drawable.BitmapDrawable(getResources(), scene.render(m.widthPixels / 2, m.heightPixels / 2)));
+        }
+        sceneShown = scene == null ? null : theme.id;
         greeting.setVisibility(prefs.getBoolean("greeting", true) ? View.VISIBLE : View.GONE);
         if (pumpkin != null) pumpkin.stop();
         pumpkin = null;
@@ -280,7 +289,7 @@ public final class MainActivity extends Activity implements AppGrid.Host {
         header.setClipToPadding(false); // the focused pills grow into the margin
         header.setPadding(Ui.dp(this, EDGE), 0, Ui.dp(this, EDGE), 0);
         header.addView(left, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        header.addView(pill(R.string.lights, v -> startActivity(new Intent(this, LightsActivity.class))));
+        header.addView(pill(R.string.controls, v -> startActivity(new Intent(this, LightsActivity.class))));
         View settings = pill(R.string.settings, this::settingsMenu);
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         sp.leftMargin = Ui.dp(this, 12);

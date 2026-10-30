@@ -234,6 +234,10 @@ final class AppGrid {
             apps.toggleHidden(app.pkg);
             show(app.pkg);
         });
+        menu.add(activity.getString(R.string.rename), () -> {
+            menu.dismiss();
+            rename(app);
+        });
         menu.add(activity.getString(R.string.close_app), () -> {
             menu.dismiss();
             Recents recents = new Recents(activity);
@@ -249,6 +253,41 @@ final class AppGrid {
             activity.startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + app.pkg)));
         });
         menu.showAt(card, 300);
+    }
+
+    /** A glass sheet with a text field (the TV's keyboard opens on it), Save, and the app's own name back. */
+    private void rename(Apps.App app) {
+        Sheet sheet = new Sheet(activity, activity.getString(R.string.rename));
+        android.widget.EditText field = new android.widget.EditText(activity);
+        field.setHint(app.label); // empty, the current name faded behind: the TV's keyboard would drop a selection anyway
+        field.setHintTextColor(Ui.TEXT_DIM);
+        field.setSingleLine(true);
+        field.setTextColor(Ui.TEXT);
+        field.setTextSize(17);
+        field.setTypeface(Ui.font(activity, 500));
+        field.setPadding(Ui.dp(activity, 14), 0, Ui.dp(activity, 14), 0);
+        GradientDrawable box = Ui.rounded(activity, 0x26FFFFFF);
+        field.setBackground(box);
+        field.setOnFocusChangeListener((v, has) -> box.setStroke(has ? Ui.dp(activity, 2) : 0, 0xCCFFFFFF));
+        field.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        Runnable save = () -> {
+            sheet.dismiss();
+            if (field.getText().toString().trim().isEmpty()) return; // nothing typed: keep the name
+            apps.rename(app.pkg, field.getText().toString());
+            show(app.pkg);
+        };
+        field.setOnEditorActionListener((v, action, e) -> {
+            save.run();
+            return true;
+        });
+        sheet.addView(field);
+        sheet.add(activity.getString(R.string.save), save);
+        sheet.add(activity.getString(R.string.original_name), () -> {
+            sheet.dismiss();
+            apps.rename(app.pkg, null);
+            show(app.pkg);
+        });
+        sheet.showCentered(460);
     }
 
     /** The card lifts, the others dim; the arrows carry it, OK or Back puts it down and saves the order. */

@@ -26,9 +26,13 @@ No ads, no sponsored rows, no account. Plain Java, no libraries, about 150 KB (5
   The page glides with focus, and the clock and title fade as the grid comes up.
 - **Themes.** Automatic follows the calendar: in Halloween week (Oct 24 to Nov 1) Home turns purple with an orange
   glow, a flickering jack-o'-lantern by the greeting and a colony of bats that flies over Home once a day. Or pick
-  Default, Halloween, Midnight (pure black for OLED, no glow) or Aurora in Settings.
+  Default, Night mountains, Dusk, Dawn, Halloween, Midnight (pure black for OLED, no glow) or Aurora in Settings.
+  The three scenes are landscapes drawn in code (stars, a moon or a low sun, three ridges in haze): a few KB, no photos.
+- **Control panel.** The Controls pill slides it in from the right: network, Bluetooth, sound, inputs, memory (opens
+  Running apps), screensaver, search and settings, each with its live state, and the Hue lights below. Tiles whose
+  screen the TV lacks are left out.
 - **Your order.** Hold OK (or press Menu) on an app: a glass menu drops in from its card with **Move**, **Hide**,
-  **Close**, **App info** and **Uninstall** (apps you installed). Move lifts the card and dims the others; the arrows
+  **Rename**, **Close**, **App info** and **Uninstall** (apps you installed). Move lifts the card and dims the others; the arrows
   carry it through the grid while the page holds still around it, OK puts it down.
 - **Running apps.** Settings → Running apps lists what you used lately with the memory in use on top. **Close
   all** stops what plays and asks Android to end the apps; an app's row opens its own info page, where **Force
@@ -39,7 +43,7 @@ No ads, no sponsored rows, no account. Plain Java, no libraries, about 150 KB (5
 - **Now Playing.** While anything plays (Spotify, YouTube, Stremio...), a card at the top shows the cover and
   title, tinted in the cover's color, with bars that move while it plays and a line that fills as the track
   goes. OK pauses or plays, Left and Right skip. A forgotten video in the background is one press away.
-- **Hue lights one press away.** The Lights pill next to Settings slides the lights panel in from the right:
+- **Hue lights one press away.** The control panel (Controls pill) ends with the lights:
   one card per lamp, tinted with the lamp's real color; lamps cut off at the wall switch say so. OK switches a
   lamp; hold OK for brightness, colors, the 103 palettes of the Hue app's scenes, your own Hue scenes and the bridge's effects (candle, fireplace, opal...). Changes from the Hue app or
   a wall switch show up at once (the bridge's event stream).
@@ -48,9 +52,10 @@ No ads, no sponsored rows, no account. Plain Java, no libraries, about 150 KB (5
   drifting slowly along it with soft fades. Browsing previews and videos without a cover leave your color
   alone, and so are the room's other lamps. Paused or standby: the drift stops. Back on Home the strip,
   including its gradient or effect, returns to how it was.
-- **The lights from anywhere.** One remote key (on TCL remotes the 123 key) slides the same panel in from the
-  right, over whatever is playing. Android turns this key off if the app is force-stopped in Settings; run
-  `./home.sh panel-key` again to bring it back.
+- **The panel from anywhere (optional).** With `./home.sh panel-key`, one remote key (on TCL remotes the 123 key)
+  slides the control panel in over whatever is playing, and the panel gains a sleep timer and Screen off. It is an
+  accessibility service that sees every remote key, and on the TCL this was built on the remote misbehaved while it
+  was on, so it is off unless you turn it on; Settings → Accessibility turns it off again.
 - **Screensaver.** A large thin clock, the date and the weather over a slowly drifting glow; the text moves
   every minute so nothing burns in.
 - Finds the Hue Bridge on its own (mDNS); pairing is one press of the bridge's button.
@@ -94,7 +99,7 @@ press *Build* 7 times, then Developer options).
 adb connect 192.168.1.80:5555     # your TV's address; accept the prompt on the TV
 ./home.sh install                 # build, install, allow Now Playing / film mode to read the media session
 ./home.sh home                    # make it the home screen and the screensaver
-./home.sh panel-key               # optional: one remote key opens the lights panel from anywhere
+./home.sh panel-key               # optional: one remote key opens the control panel from anywhere
 ./home.sh restore                 # give the home screen back to the TV's own launcher
 ```
 

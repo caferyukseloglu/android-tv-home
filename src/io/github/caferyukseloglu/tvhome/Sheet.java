@@ -116,6 +116,13 @@ final class Sheet {
         return row;
     }
 
+    /** Any view as a row of its own, for the odd sheet that needs one (a text field). */
+    void addView(View v) {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(activity, ROW_H));
+        p.bottomMargin = Ui.dp(activity, 8);
+        rows.addView(v, p);
+    }
+
     View add(CharSequence text, Runnable action) {
         return add(null, text, null, action);
     }
